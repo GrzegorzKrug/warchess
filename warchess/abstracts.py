@@ -87,6 +87,12 @@ class FigureBase(ABC):
         return "BaseFigure"
 
     def __str__(self):
+        return f"{self.name}: Fly:{str(self.is_move_flying)[0]}, " \
+               f"Inf:{str(self.is_move_infinite)[0]}, " \
+               f"C:{self.color};"
+
+    @property
+    def details(self):
         return f"{self.name}: Fly:{self.is_move_flying}, Inf:{self.is_move_infinite}, " \
                f"{self.move_pattern}, {self.attack_pattern}, Special moves: {self.special}"
 
@@ -108,7 +114,7 @@ class SpecialBase(ABC):
         return self._named_tup
 
     @abstractmethod
-    def is_valid(self, context, move):
+    def is_valid(self, board, f1, f2):
         pass
 
     def counter_check(self):
@@ -163,8 +169,11 @@ class BoardBase(ABC):
     def remove_figure(self, pos: Tuple):
         del self.figs_on_board[pos]
 
-    def promote(self):
-        raise NotImplementedError
+    def get(self, key):
+        return self.figs_on_board.get(key, None)
+
+    def change_fig(self, field, fig):
+        self.figs_on_board[field] = fig
 
     def print_table(self, justify=8, flip=False):
         if flip:
@@ -189,21 +198,51 @@ class BoardBase(ABC):
 class GameModeBase(ABC):
     def __init__(self):
         self.board = BoardBase()
+        self.players = 2
+        self.current_player_turn = 0
+        self.last_hit = 0
+        self.move_count = 0
 
     @abstractmethod
-    def _is_move_valid(self, some):
+    def _is_move_valid(self, field1, field2):
+        pass
+
+    @abstractmethod
+    def _can_fig_move(self, field1, field2):
         pass
 
     @abstractmethod
     def _is_game_over(self):
         pass
 
-    @abstractmethod
-    def action(self, field1, field2):
-        pass
+    def make_move(self, f1, f2):
+        self.resolve_action(f1, f2)
+
+    def resolve_action(self, field1, field2):
+        if self._is_move_valid(field1, field2):
+            self.board.move_figure(field1, field2)
+            if self._is_promotion(field2):
+                fig = self.get_promotion_fig(self.current_player_turn)
+                self.board.change_fig(field2, fig)
+            else:
+                pass
+
+        else:
+            raise ValueError("Not valid move")
 
     @abstractmethod
     def get_proper_figure(self, name, color):
+        pass
+
+    @abstractmethod
+    def _is_promotion(self, field):
+        pass
+
+    @abstractmethod
+    def get_promotion_fig(self, color):
+        return None
+
+    def strings_to_tuple(self, *moves):
         pass
 
     @abstractmethod
