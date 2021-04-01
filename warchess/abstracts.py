@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod, abstractproperty
 from collections import namedtuple
 
+from typing import Any, Tuple, List, AnyStr, Union, Iterable
+
 # pattern_tuple = namedtuple("P", field_names=["X", "Y"])
 
 
@@ -20,7 +22,7 @@ def get_right_tuple(tuplelike):
 
 class FigureBase(ABC):
 
-    def __init__(self, color, direction=None, was_moved=False,
+    def __init__(self, color=0, direction=None, was_moved=False,
                  flying_move=False, stationary_attack=False, infinite_move=False):
         color = int(color)
         if direction is None:
@@ -133,30 +135,85 @@ class SpecialBase(ABC):
 
 class BoardBase(ABC):
     """
-    State
+    State and pieces on the board
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, width=8, height=8):
+        self.width = width
+        self.height = height
+        self.figs_on_board = dict()
+        # self.figures = dict()
 
-    @abstractmethod
+    # @abstractmethod
     def clear_board(self):
-        pass
+        self.__init__()
 
-    @abstractmethod
-    def add_figure(self):
-        pass
+    # @abstractmethod
+    def add_figure(self, field, fig):
+        if field in self.figs_on_board:
+            raise ValueError(f"There is figure on this {self.figs_on_board[field]}")
+        else:
+            self.figs_on_board[field] = fig
 
-    @abstractmethod
-    def move_figure(self):
-        pass
+    def move_figure(self, field1, field2):
+        fig = self.figs_on_board.pop(field1)
+        fig.move()
+        self.figs_on_board[field2] = fig
+
+    def remove_figure(self, pos: Tuple):
+        del self.figs_on_board[pos]
+
+    def promote(self):
+        raise NotImplementedError
+
+    def print_table(self, justify=8, flip=False):
+        if flip:
+            rang = range(8)
+        else:
+            rang = range(7, -1, -1)
+
+        print("Board:")
+        for y in rang:
+            for x in range(8):
+                fig = self.figs_on_board.get((x, y), None)
+                if fig:
+                    text = fig.name
+                else:
+                    text = ''
+
+                text = text.center(justify)
+                print(f"{text}", end='')
+            print()
 
 
-class GameBase(ABC):
+class GameModeBase(ABC):
     def __init__(self):
+        self.board = BoardBase()
+
+    @abstractmethod
+    def _is_move_valid(self, some):
         pass
 
-    def load_fen(self, fen):
+    @abstractmethod
+    def _is_game_over(self):
+        pass
+
+    @abstractmethod
+    def action(self, field1, field2):
+        pass
+
+    @abstractmethod
+    def get_proper_figure(self, name, color):
+        pass
+
+    @abstractmethod
+    def _is_team_checked(self, color):
+        pass
+
+    def new_game(self):
+        self.__init__()
+
+    def load_fen(self, fen: str):
         raise NotImplementedError
 
     def export_fen(self):
@@ -164,18 +221,3 @@ class GameBase(ABC):
 
     def export_game_history(self):
         raise NotImplementedError
-
-    @abstractmethod
-    def new_game(self, mode):
-        pass
-
-
-class CheckRulesBase(ABC):
-
-    @abstractmethod
-    def is_move_valid(self, some):
-        pass
-
-    @abstractmethod
-    def is_game_over(self):
-        pass
