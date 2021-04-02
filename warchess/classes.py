@@ -78,6 +78,10 @@ class PawnRush(SpecialBase):
         return "PawnRush"
 
     def is_valid(self, board, f1, f2):
+        x, y = f1
+        if not (y == 1 or y == 6):
+            return False
+
         dx, dy = f2[0] - f1[0], f2[1] - f1[1]
         fig = board.get(f1)
         target = board.get(f2)
@@ -119,7 +123,8 @@ class EnPassant(SpecialBase):
         elif by == 2 and y == 3:
             fig2_pos = bx, y
         else:
-            raise ValueError(f"This move is not valid: {f1} -> {f2}")
+            return False
+            # raise ValueError(f"This move is not valid: {f1} -> {f2}")
 
         fig2 = board.get(fig2_pos)
         if not isinstance(fig2, Pawn):
@@ -154,8 +159,8 @@ class EnPassant(SpecialBase):
 
 
 class Knight(FigureBase):
-    def __init__(self, *a, air_attack=True, air_move=True, **kw):
-        super().__init__(*a, **kw)
+    def __init__(self, *a, air_move=True, air_attack=True, **kw):
+        super().__init__(*a, air_move=air_move, air_attack=air_attack, **kw)
 
         self._move_pattern = (
                 move_tuple(1, 2),
@@ -253,25 +258,30 @@ class Castle(SpecialBase):
 
     def is_valid(self, board, f1, f2):
         x, y = f1
+
+        bx, by = f2
         fig = board.get(f1)
-        if not fig.was_moved and isinstance(fig, King):
-            if x == 6 and y == 0:
+        if x != 4 or y not in (0, 7):
+            return False
+
+        if isinstance(fig, King) and not fig.was_moved:
+            if bx == 4 and by == 0:
                 rk = board.get((7, 0))
                 empty1 = board.get((6, 0))
                 empty2 = board.get((7, 0))
                 empty3 = None
-            elif x == 2 and y == 0:
+            elif bx == 2 and by == 0:
                 rk = board.get((0, 0))
                 empty1 = board.get((1, 0))
                 empty2 = board.get((2, 0))
                 empty3 = board.get((3, 0))
 
-            elif x == 6 and y == 7:
+            elif bx == 6 and by == 7:
                 rk = board.get((7, 7))
                 empty1 = board.get((6, 7))
                 empty2 = board.get((7, 7))
                 empty3 = None
-            elif x == 6 and y == 0:
+            elif bx == 6 and by == 0:
                 rk = board.get((0, 7))
                 empty1 = board.get((1, 7))
                 empty2 = board.get((2, 7))
@@ -282,7 +292,7 @@ class Castle(SpecialBase):
             if empty1 is not None or empty2 is not None and empty3 is not None:
                 return False
 
-            if isinstance(rk, Rook) and rk.was_moved == False:
+            if isinstance(rk, Rook) and not rk.was_moved:
                 return True
         else:
             return False
@@ -375,7 +385,7 @@ class ClassicGame(GameModeBase):
         Setup board to fen
         8Lines of board layout
         Current turn.
-        Castling possibilites
+        Castling possibilities
         Enpassant to this field.
         2 x Counter
         Small letters - black
@@ -421,13 +431,13 @@ class ClassicGame(GameModeBase):
             rk = self.board.get((7, 7))
             rk.was_moved = False
         if 'K' in castling:
-            rk = self.board.get((7, 0))
+            rk = self.board.get((0, 7))
             rk.was_moved = False
         if "q" in castling:
-            rk = self.board.get((7, 7))
+            rk = self.board.get((0, 7))
             rk.was_moved = False
         if "Q" in castling:
-            rk = self.board.get((0, 7))
+            rk = self.board.get((0, 0))
             rk.was_moved = False
 
         if enpasant != "-":
@@ -530,15 +540,10 @@ if __name__ == "__main__":
     # c.make_move(*c.strings_to_tuple("B2", "B4"))
     # c.board.print_table()
 
-    # g = ClassicGame()
-    # g.load_fen("rnbqkbnr/pp1p1ppp/8/2pPp3/8/8/PPP1PPPP/RNBQKBNR w KQkq c6 0 3")
-    # g.make_move(*g.strings_to_tuple("d5", "e6"))
-    #
-    # g.board.print_table()
-
     g = ClassicGame()
-    g.load_fen("rnbqkbnr/pp1p1ppp/8/2pPp3/8/8/PPP1PPPP/RNBQKBNR w KQkq c6 0 3")
+    g.load_fen("r3kbnr/pp2pppp/2ppq3/3Q4/2P5/BPNnPN2/P2P1PPP/R3K2R w KQkq - 3 13")
     g.board.print_table()
 
-    assert g._is_move_valid(*g.strings_to_tuple("d5", "d6"))
-    assert g._is_move_valid(*g.strings_to_tuple("d5", "c6"))
+    assert g._is_move_valid(*g.strings_to_tuple("e1", "d1"))
+
+# print(out)

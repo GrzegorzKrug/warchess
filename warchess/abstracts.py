@@ -300,7 +300,6 @@ class FigMoveAnalyzer:
         return self._is_move_valid(f1, f2)
 
     def _is_move_valid(self, f1, f2):
-        move = f2[0] - f1[0], f2[1] - f1[0]
         fig1 = self.board.get(f1)
         target = self.board.get(f2)
 
@@ -312,10 +311,10 @@ class FigMoveAnalyzer:
         if self.game.current_player_turn != fig1.color:
             return False
 
-        reach = self._can_fig_reach(f1, f2)
+        self._can_fig_reach(f1, f2)
         can_move = self._can_fig_move(fig1, target)
         can_attack = self._can_fig_attack(fig1, target)
-        print(f"reach:{reach}, can_mv: {can_move}, can_atk:{can_attack}")
+        # print(f"reach:{reach}, can_mv: {can_move}, can_atk:{can_attack}")
         print(self.attack_reach, self.move_reach)
 
         if target is not None and can_attack and self.attack_reach:
@@ -372,16 +371,16 @@ class FigMoveAnalyzer:
             if fig.is_air_move and direction in fig.move_pattern:
                 self.move_reach = True
             elif direction in fig.move_pattern:
-                tmp_move = (0, 0)
+                tmp_move = f1
                 while True:
-                    # print("loop")
+                    print("loop")
                     tmp_move = tmp_move[0] + direction[0], tmp_move[1] + direction[1]
                     is_fig = self.board.get(tmp_move)
-                    if tmp_move == move:
-                        self.move_reach = True
-                        break
                     if is_fig is not None:
                         self.move_reach = False
+                        break
+                    if tmp_move == f2:
+                        self.move_reach = True
                         break
             else:
                 raise ValueError(f"This is not valid move to long pattern: {move}")
@@ -389,11 +388,12 @@ class FigMoveAnalyzer:
             if fig.is_air_attack and direction in fig.attack_pattern:
                 self.attack_reach = True
             elif direction in fig.attack_pattern:
-                tmp_move = (0, 0)
+                tmp_move = f1
                 while True:
+                    print("loop2")
                     tmp_move = tmp_move[0] + direction[0], tmp_move[1] + direction[1]
                     is_fig = self.board.get(tmp_move)
-                    if tmp_move == move:
+                    if tmp_move == f2:
                         self.attack_reach = True
                         break
                     if is_fig is not None:
@@ -403,7 +403,11 @@ class FigMoveAnalyzer:
                 raise ValueError(f"This is not valid move to long pattern: {move}")
 
         else:
-            return False
+            "Air pattern attacks"
+            if fig.is_air_move and move in fig.move_pattern:
+                self.move_reach = True
+            if fig.is_air_attack and move in fig.attack_pattern:
+                self.attack_reach = True
 
         if self.move_reach or self.attack_reach:
             return True
