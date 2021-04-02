@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod, abstractproperty
 from collections import namedtuple
+from copy import deepcopy
 
 from typing import Any, Tuple, List, AnyStr, Union, Iterable
+
+import numpy as np
 
 # pattern_tuple = namedtuple("P", field_names=["X", "Y"])
 
@@ -23,7 +26,7 @@ def get_right_tuple(tuplelike):
 class FigureBase(ABC):
 
     def __init__(self, color=0, direction=None, was_moved=False,
-                 flying_move=False, stationary_attack=False, infinite_move=False):
+                 air_move=False, air_attack=False, stationary_attack=False, infinite_move=False):
         color = int(color)
         if direction is None:
             direction = color
@@ -36,15 +39,16 @@ class FigureBase(ABC):
         self.direction = direction
         self.was_moved = was_moved
 
-        self.is_move_flying = flying_move
+        self.is_air_attack = air_attack
+        self.is_air_move = air_move
         self.is_attack_stationary = stationary_attack
         self.is_move_infinite = infinite_move
 
         self._move_pattern = None
         self._attack_pattern = None
-        self._special = None
+        self._specials = None
 
-    def make_move(self):
+    def move(self):
         self.was_moved = True
 
     def clear_special_attr(self):
@@ -59,8 +63,8 @@ class FigureBase(ABC):
         return self._attack_pattern
 
     @property
-    def special(self):
-        return self._special
+    def specials(self):
+        return self._specials
 
     @staticmethod
     def rotate_pattern(ptrn, right=True):
@@ -87,20 +91,19 @@ class FigureBase(ABC):
         return "BaseFigure"
 
     def __str__(self):
-        return f"{self.name}: Fly:{str(self.is_move_flying)[0]}, " \
+        return f"{self.name}: Fly:{str(self.is_air_move)[0]}, " \
                f"Inf:{str(self.is_move_infinite)[0]}, " \
                f"C:{self.color};"
-
-    @property
-    def details(self):
-        return f"{self.name}: Fly:{self.is_move_flying}, Inf:{self.is_move_infinite}, " \
-               f"{self.move_pattern}, {self.attack_pattern}, Special moves: {self.special}"
 
     def __repr__(self):
         return str(self)
 
 
 class SpecialBase(ABC):
+    """
+    Base for special moves, unconventional.
+    """
+
     def __init__(self):
         self.patterns = None
         self._named_tup = namedtuple(self.name, field_names=["X", "Y"])
@@ -115,6 +118,10 @@ class SpecialBase(ABC):
 
     @abstractmethod
     def is_valid(self, board, f1, f2):
+        pass
+
+    @abstractmethod
+    def apply(self, board, f1, f2):
         pass
 
     def counter_check(self):
@@ -198,37 +205,58 @@ class BoardBase(ABC):
 class GameModeBase(ABC):
     def __init__(self):
         self.board = BoardBase()
-        self.players = 2
+        self.players_num = 2
         self.current_player_turn = 0
         self.last_hit = 0
         self.move_count = 0
-
-    @abstractmethod
-    def _is_move_valid(self, field1, field2):
-        pass
-
-    @abstractmethod
-    def _can_fig_move(self, field1, field2):
-        pass
-
-    @abstractmethod
-    def _is_game_over(self):
-        pass
+        self._move_checker = FigMoveAnalyzer()
 
     def make_move(self, f1, f2):
-        self.resolve_action(f1, f2)
+        self._resolve_action(f1, f2)
 
-    def resolve_action(self, field1, field2):
-        if self._is_move_valid(field1, field2):
-            self.board.move_figure(field1, field2)
-            if self._is_promotion(field2):
-                fig = self.get_promotion_fig(self.current_player_turn)
-                self.board.change_fig(field2, fig)
-            else:
-                pass
+    @abstractmethod
+    def _post_move_actions(self, field2):
+        pass
 
+    def _is_move_valid(self, f1, f2):
+        print(f"\n\nChecking: {f1}->{f2}")
+        check = self._move_checker.check(self, self.board, f1, f2)
+        return check or self._move_checker.can_special
+
+    def _resolve_action(self, f1, f2):
+        is_ok = self._move_checker.check(self, self.board, f1, f2)
+        print()
+        print(f"is ok: {is_ok}, {f1}, {f2}")
+        print(f"spec: {self._move_checker.can_special}")
+        tmp_brd = deepcopy(self.board)
+        if is_ok:
+            self.board.move_figure(f1, f2)
+            self._post_move_actions(f2)
+        elif self._move_checker.can_special:
+            spc = self._move_checker.spc
+            spc.apply(self.board, f1, f2)
         else:
-            raise ValueError("Not valid move")
+            raise ValueError("Incorrect move")
+
+        if self.check_rules_for(self.current_player_turn):
+            "Its ok"
+        else:
+            self.board = tmp_brd
+            raise ValueError(f"Invalid move!{f1} to {f2}. reverting board")
+
+        self.current_player_turn = (self.current_player_turn + 1) % self.players_num
+
+    @abstractmethod
+    def check_rules_for(self, color):
+        pass
+
+    # if self._is_move_valid(field1, field2):
+    #     self.board.move_figure(field1, field2)
+    #
+    #     self._post_move_actions(field2)
+    #
+    # else:
+    #     raise ValueError("Not valid move")
 
     @abstractmethod
     def get_proper_figure(self, name, color):
@@ -245,10 +273,6 @@ class GameModeBase(ABC):
     def strings_to_tuple(self, *moves):
         pass
 
-    @abstractmethod
-    def _is_team_checked(self, color):
-        pass
-
     def new_game(self):
         self.__init__()
 
@@ -260,3 +284,147 @@ class GameModeBase(ABC):
 
     def export_game_history(self):
         raise NotImplementedError
+
+
+class FigMoveAnalyzer:
+    def check(self, game: GameModeBase, board: BoardBase, f1: move_tuple, f2: move_tuple):
+        self.game = game
+        self.board = board
+        self.move_reach = False
+        self.attack_reach = False
+        self.f1 = f1
+        self.f2 = f2
+        self.can_special = False
+        self.spc = None
+
+        return self._is_move_valid(f1, f2)
+
+    def _is_move_valid(self, f1, f2):
+        move = f2[0] - f1[0], f2[1] - f1[0]
+        fig1 = self.board.get(f1)
+        target = self.board.get(f2)
+
+        "Check if figure is here"
+        if fig1 is None:
+            return False
+
+        "Wrong figure, Turn for other player"
+        if self.game.current_player_turn != fig1.color:
+            return False
+
+        reach = self._can_fig_reach(f1, f2)
+        can_move = self._can_fig_move(fig1, target)
+        can_attack = self._can_fig_attack(fig1, target)
+        print(f"reach:{reach}, can_mv: {can_move}, can_atk:{can_attack}")
+        print(self.attack_reach, self.move_reach)
+
+        if target is not None and can_attack and self.attack_reach:
+            return True
+        elif target is None and can_move and self.move_reach:
+            return True
+
+        self._can_fig_special(fig1, f1, f2)
+        return False
+        # if target is None:
+        #     return self.move_reach
+        # else:
+        #     if target.color == fig.color:
+        #         return False
+        #     return self.attack_reach
+
+    @staticmethod
+    def _can_fig_attack(fig: FigureBase, target: FigureBase):
+        if target is None:
+            return False
+        if fig.color != target.color:
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def _can_fig_move(fig: FigureBase, target: FigureBase):
+        if target is None:
+            return True
+
+    def _can_fig_reach(self, f1, f2):
+        move = f2[0] - f1[0], f2[1] - f1[1]
+        fig = self.board.get(f1)
+
+        # move_diag = abs(move[0]) == abs(move[1])
+        # move_lin = move[0] == 0 or move[1] == 0
+        direction = tuple(np.sign(np.array(move)))
+        dist = max((abs(move[0]), abs(move[1])))
+        # print(f"from: {f1} to {f2}")
+        # print(f"move: {move}")
+        # print(f"Dist: {dist}")
+
+        if dist == 1:
+            if move in fig.move_pattern:
+                self.move_reach = True
+
+            if move in fig.attack_pattern:
+                self.attack_reach = True
+            return True
+
+        # print(fig)
+        # print("infi:", fig.is_move_infinite)
+        if fig.is_move_infinite:
+            if fig.is_air_move and direction in fig.move_pattern:
+                self.move_reach = True
+            elif direction in fig.move_pattern:
+                tmp_move = (0, 0)
+                while True:
+                    # print("loop")
+                    tmp_move = tmp_move[0] + direction[0], tmp_move[1] + direction[1]
+                    is_fig = self.board.get(tmp_move)
+                    if tmp_move == move:
+                        self.move_reach = True
+                        break
+                    if is_fig is not None:
+                        self.move_reach = False
+                        break
+            else:
+                raise ValueError(f"This is not valid move to long pattern: {move}")
+
+            if fig.is_air_attack and direction in fig.attack_pattern:
+                self.attack_reach = True
+            elif direction in fig.attack_pattern:
+                tmp_move = (0, 0)
+                while True:
+                    tmp_move = tmp_move[0] + direction[0], tmp_move[1] + direction[1]
+                    is_fig = self.board.get(tmp_move)
+                    if tmp_move == move:
+                        self.attack_reach = True
+                        break
+                    if is_fig is not None:
+                        self.attack_reach = False
+                        break
+            else:
+                raise ValueError(f"This is not valid move to long pattern: {move}")
+
+        else:
+            return False
+
+        if self.move_reach or self.attack_reach:
+            return True
+
+    def _is_team_checked(self, color):
+        pass
+
+    def _can_fig_special(self, fig: FigureBase, f1, f2):
+        print("\nChecking specials")
+        # print(fig)
+        # print(fig.specials)
+
+        if fig.specials is not None:
+            for spc in fig.specials:
+                print(f"Checking: {spc}")
+                valid = spc.is_valid(self.board, f1, f2)
+                if valid:
+                    print(f"valid {valid}")
+                    self.can_special = True
+                    self.spc = spc
+                    return True
+
+    def _is_game_over(self):
+        pass

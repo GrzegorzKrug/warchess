@@ -12,6 +12,20 @@ def test_1_():
         assert len(f._attack_pattern) > 0, f"{f}"
 
 
+def test_1_fig_attrs():
+    figs = [Pawn, Rook, King, Knight, Queen, Bishop]
+    figs = [f(n) for n in range(2) for f in figs]
+    for f in figs:
+        assert len(f.name) > 0, f"{f}"
+        assert len(f._move_pattern) > 0, f"{f}"
+        assert len(f._attack_pattern) > 0, f"{f}"
+        assert hasattr(f, '_specials')
+        assert not hasattr(f, '_special')
+
+        if f.specials:
+            assert type(f.specials) is tuple
+
+
 def test_2_():
     g = ClassicGame()
     g.board.print_table()
@@ -36,7 +50,7 @@ def test_3_load_fen():
 def test_4_enpassant():
     g = ClassicGame()
     g.load_fen("rnbqkbnr/pp1p1ppp/8/2pPp3/8/8/PPP1PPPP/RNBQKBNR w KQkq c6 0 3")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as err:
         g.make_move(*g.strings_to_tuple("d5", "e6"))
 
     assert g._is_move_valid(*g.strings_to_tuple("d5", "d6"))
@@ -311,6 +325,53 @@ def test_13_white_queen():
     assert g._is_move_valid(*g.strings_to_tuple("d4", "g1"))
     assert g._is_move_valid(*g.strings_to_tuple("d4", "c3"))
     assert not g._is_move_valid(*g.strings_to_tuple("d4", "b2"))
+
+
+def test_14_move_and_check():
+    g = ClassicGame()
+    g.load_fen("kp2q3/pq5q/6P1/q2QNP2/q1QBKR1q/5N2/2N1R1N1/1q2q2q w - - 0 1")
+    g.board.print_table()
+
+    assert g._is_move_valid(*g.strings_to_tuple("c4", "b4"))
+    assert g._is_move_valid(*g.strings_to_tuple("c4", "a4"))
+    assert g._is_move_valid(*g.strings_to_tuple("c4", "c5"))
+    assert g._is_move_valid(*g.strings_to_tuple("c4", "c3"))
+    assert not g._is_move_valid(*g.strings_to_tuple("c4", "a2"))
+
+    assert g._is_move_valid(*g.strings_to_tuple("d5", "c6"))
+    assert g._is_move_valid(*g.strings_to_tuple("d5", "b7"))
+    assert not g._is_move_valid(*g.strings_to_tuple("d5", "a8"))
+    assert not g._is_move_valid(*g.strings_to_tuple("d5", "d6"))
+    assert not g._is_move_valid(*g.strings_to_tuple("d5", "c5"))
+    assert not g._is_move_valid(*g.strings_to_tuple("d5", "e4"))
+
+    assert not g._is_move_valid(*g.strings_to_tuple("c2", "e1"))
+
+    assert g._is_move_valid(*g.strings_to_tuple("f4", "h4"))
+    assert g._is_move_valid(*g.strings_to_tuple("f4", "g4"))
+    assert not g._is_move_valid(*g.strings_to_tuple("f4", "f3"))
+    assert not g._is_move_valid(*g.strings_to_tuple("f4", "f5"))
+    assert not g._is_move_valid(*g.strings_to_tuple("f4", "f2"))
+    assert not g._is_move_valid(*g.strings_to_tuple("f4", "f1"))
+    assert not g._is_move_valid(*g.strings_to_tuple("f4", "e4"))
+
+    assert g._is_move_valid(*g.strings_to_tuple("f3", "h4"))
+    assert g._is_move_valid(*g.strings_to_tuple("f3", "e1"))
+    assert g._is_move_valid(*g.strings_to_tuple("f3", "h2"))
+
+    assert g._is_move_valid(*g.strings_to_tuple("g2", "h4"))
+    assert g._is_move_valid(*g.strings_to_tuple("g2", "e1"))
+
+    assert g._is_move_valid(*g.strings_to_tuple("e2", "e1"))
+    assert g._is_move_valid(*g.strings_to_tuple("e2", "e3"))
+    assert not g._is_move_valid(*g.strings_to_tuple("e2", "f1"))
+    assert not g._is_move_valid(*g.strings_to_tuple("e2", "d1"))
+    assert not g._is_move_valid(*g.strings_to_tuple("e2", "e4"))
+
+    assert not g._is_move_valid(*g.strings_to_tuple("c2", "e4"))
+    assert not g._is_move_valid(*g.strings_to_tuple("c2", "e1"))
+    assert not g._is_move_valid(*g.strings_to_tuple("c2", "e3"))
+    assert not g._is_move_valid(*g.strings_to_tuple("c2", "b4"))
 
 
 def test_14_():

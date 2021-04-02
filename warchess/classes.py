@@ -24,12 +24,12 @@ class Pawn(FigureBase):
                 attack_tuple(-1, 1),
                 attack_tuple(1, 1),
         )
-        self._special = (PawnRush(), EnPassant())
+        self._specials = (PawnRush(), EnPassant(),)
 
         if self.direction == 1:
             self._move_pattern = self.flip_y_pattern(self._move_pattern)
             self._attack_pattern = self.flip_y_pattern(self._attack_pattern)
-            for spec in self._special:
+            for spec in self._specials:
                 spec.flip_this_by_y()
 
         # print(self._move_pattern)
@@ -51,9 +51,9 @@ class Pawn(FigureBase):
     def attack_pattern(self):
         return self._attack_pattern
 
-    @property
-    def special_pattern(self):
-        return self._special
+    # @property
+    # def special_pattern(self):
+    #     return self._special
 
     def make_special_move(self):
         assert not self.was_moved, "Pawn can't be moved"
@@ -64,6 +64,7 @@ class Pawn(FigureBase):
         self.did_rush = False
 
     def make_move(self):
+        self.was_moved = True
         self.did_rush = False
 
 
@@ -92,6 +93,9 @@ class PawnRush(SpecialBase):
         else:
             return False
 
+    def apply(self, board, f1, f2):
+        board.move_figure(f1, f2)
+
 
 class EnPassant(SpecialBase):
     def __init__(self):
@@ -102,13 +106,56 @@ class EnPassant(SpecialBase):
     def name(self):
         return "EnPassant"
 
-    def is_valid(self, context, f1, f2):
-        pass
+    def is_valid(self, board, f1, f2):
+        x, y = f1
+        bx, by = f2
+        fig1 = board.get(f1)
+
+        if abs(x - bx) != 1:
+            return False
+
+        if by == 5 and y == 4:
+            fig2_pos = bx, y
+        elif by == 2 and y == 3:
+            fig2_pos = bx, y
+        else:
+            raise ValueError(f"This move is not valid: {f1} -> {f2}")
+
+        fig2 = board.get(fig2_pos)
+        if not isinstance(fig2, Pawn):
+            print("Not a pawn")
+            return False
+
+        if fig1.color == fig2.color:
+            print("Same fig colors")
+            return False
+
+        if fig2.did_rush:
+            print("did rush")
+            return True
+        else:
+            print("It did not rush")
+            return False
+
+    def apply(self, board, f1, f2):
+        x, y = f1
+        bx, by = f2
+        # fig1 = board.get(f1)
+
+        if y == 5:
+            fig2_pos = bx, by - 1
+        elif y == 3:
+            fig2_pos = bx, by + 1
+        else:
+            raise ValueError(f"This move is not valid: {f1} -> {f2}")
+
+        board.remove_figure(fig2_pos)
+        board.move_figure(f1, f2)
 
 
 class Knight(FigureBase):
-    def __init__(self, *a, flying_move=True, **kw):
-        super().__init__(*a, flying_move=flying_move, **kw)
+    def __init__(self, *a, air_attack=True, air_move=True, **kw):
+        super().__init__(*a, **kw)
 
         self._move_pattern = (
                 move_tuple(1, 2),
@@ -191,7 +238,7 @@ class King(Queen):
     def __init__(self, *a, infinite_move=False, **kw):
         super().__init__(*a, infinite_move=infinite_move, **kw)
 
-        self._special = (Castle())
+        self._specials = (Castle(),)
         # print(self._special)
 
     @property
@@ -204,8 +251,63 @@ class Castle(SpecialBase):
         super().__init__()
         self.patterns = (self.named_tup(-2, 0), self.named_tup(2, 0))
 
-    def is_valid(self, context, move):
-        pass
+    def is_valid(self, board, f1, f2):
+        x, y = f1
+        fig = board.get(f1)
+        if not fig.was_moved and isinstance(fig, King):
+            if x == 6 and y == 0:
+                rk = board.get((7, 0))
+                empty1 = board.get((6, 0))
+                empty2 = board.get((7, 0))
+                empty3 = None
+            elif x == 2 and y == 0:
+                rk = board.get((0, 0))
+                empty1 = board.get((1, 0))
+                empty2 = board.get((2, 0))
+                empty3 = board.get((3, 0))
+
+            elif x == 6 and y == 7:
+                rk = board.get((7, 7))
+                empty1 = board.get((6, 7))
+                empty2 = board.get((7, 7))
+                empty3 = None
+            elif x == 6 and y == 0:
+                rk = board.get((0, 7))
+                empty1 = board.get((1, 7))
+                empty2 = board.get((2, 7))
+                empty3 = board.get((3, 7))
+            else:
+                return False
+
+            if empty1 is not None or empty2 is not None and empty3 is not None:
+                return False
+
+            if isinstance(rk, Rook) and rk.was_moved == False:
+                return True
+        else:
+            return False
+
+    def apply(self, board, f1, f2):
+        x, y = f1
+        fig = board.get(f1)
+        if x == 6 and y == 0:
+            rk = board.get((7, 0))
+            rook_field = (5, 0)
+        elif x == 2 and y == 0:
+            rk = board.get((0, 0))
+            rook_field = (3, 0)
+
+        elif x == 6 and y == 7:
+            rk = board.get((7, 7))
+            rook_field = (5, 7)
+        elif x == 6 and y == 0:
+            rk = board.get((0, 7))
+            rook_field = (3, 7)
+        else:
+            raise ValueError(f"Impossible move:{f1} -> {f2}")
+
+        board.move_figure(f1, f2)
+        board.add_figure(rook_field, rk)
 
     @property
     def name(self):
@@ -384,55 +486,20 @@ class ClassicGame(GameModeBase):
             return True
         return False
 
+    def check_rules_for(self, color):
+        return not self._is_team_checked(color)
+
+    def _post_move_actions(self, field2):
+        if self._is_promotion(field2):
+            self._promote(field2)
+
+    def _promote(self, field2):
+        cl = self.board.get(field2).color
+        fig = self.get_promotion_fig(cl)
+        self.board.change_fig(field2, fig)
+
     def get_promotion_fig(self, color):
         return Queen(color)
-
-    # def get_correct_moves(self, f1, all=True):
-    #     fig = self.board.get(f1)
-    #
-    #     moves = fig._moves_patterns
-
-    def _is_move_valid(self, f1, f2):
-        if self._can_fig_move(f1, f2):
-            # print(f"VALID: {f1} {f2}")
-            return True
-
-    def _can_fig_move(self, f1, f2):
-        move = f2[0] - f1[0], f2[1] - f1[0]
-        fig = self.board.get(f1)
-        temp_target = self.board.get(f2)
-
-        move_diag = abs(move[0]) == abs(move[1])
-        move_lin = move[0] == 0 or move[1] == 0
-        direction = tuple(np.sign(np.array(move)))
-
-        "Check if figure is here"
-        if fig is None:
-            return False
-
-        "Wrong figure, Turn for other player"
-        if self.current_player_turn != fig.color:
-            return False
-
-        if fig.is_move_infinite and (
-                direction in fig.move_pattern or direction in fig.attack_pattern
-        ):
-            return True
-
-        elif move in fig.move_pattern or move in fig.attack_pattern:
-            pass
-
-        elif fig.is_move_flying and (
-                move in fig.move_pattern or fig.attack_pattern
-        ):
-            return True
-
-        else:
-            for spc in fig.special:
-                if spc.is_valid(self.board, f1, f2):
-                    return True
-
-        return False
 
     def strings_to_tuple(self, *arrs):
         out = []
@@ -448,6 +515,7 @@ class ClassicGame(GameModeBase):
         return out
 
     def _is_team_checked(self, color):
+        return False
         raise NotImplementedError()
 
         # def make_move(self, f1, f2):
@@ -456,5 +524,21 @@ class ClassicGame(GameModeBase):
 
 if __name__ == "__main__":
 
-    c = ClassicGame()
-    c.make_move(*c.strings_to_tuple("A2", "A3"))
+    # c = ClassicGame()
+    # c.make_move(*c.strings_to_tuple("A2", "A3"))
+    # c.make_move(*c.strings_to_tuple("A7", "A6"))
+    # c.make_move(*c.strings_to_tuple("B2", "B4"))
+    # c.board.print_table()
+
+    # g = ClassicGame()
+    # g.load_fen("rnbqkbnr/pp1p1ppp/8/2pPp3/8/8/PPP1PPPP/RNBQKBNR w KQkq c6 0 3")
+    # g.make_move(*g.strings_to_tuple("d5", "e6"))
+    #
+    # g.board.print_table()
+
+    g = ClassicGame()
+    g.load_fen("rnbqkbnr/pp1p1ppp/8/2pPp3/8/8/PPP1PPPP/RNBQKBNR w KQkq c6 0 3")
+    g.board.print_table()
+
+    assert g._is_move_valid(*g.strings_to_tuple("d5", "d6"))
+    assert g._is_move_valid(*g.strings_to_tuple("d5", "c6"))
