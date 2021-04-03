@@ -539,15 +539,18 @@ class ClassicGame(GameModeBase):
 
 
 if __name__ == "__main__":
-
     g = ClassicGame()
-    g.load_fen("r3kbnr/pp2pppp/2ppq3/2n5/2P5/BPNQPN2/P2P1PPP/R3K2R w KQkq - 1 12")
+    g.load_fen("r3r1k1/pppb1ppp/5n2/3P4/2P5/2NB1P2/PP1q3P/2KR1R2 w - - 0 15")
     g.board.print_table()
 
-    g.make_move(*g.strings_to_tuple("e1", "g1"))
+    moves = [
+            'h1', 'g1', 'e1', 'e2', 'e4', 'c1', 'b1', 'c2', 'd2', 'd1', 'd5', 'e4',
+            'e6', 'f3', 'g4', 'g3', 'a3', 'b3', 'c6', 'e6', 'f2', 'a4', 'b5', 'f5',
+            'g6', 'h7', 'f3'
 
-    f1 = g.strings_to_tuple("g1")[0]
-    f2 = g.strings_to_tuple("f1")[0]
-
-    assert isinstance(g.board.get(f1), King)
-    assert isinstance(g.board.get(f2), Rook)
+    ]
+    for mv in moves:
+        print(mv)
+        if mv == "f3":
+            print(True)
+        assert g.under_threat(*g.strings_to_tuple(mv), defending=1), f"White is not attacking {mv}"

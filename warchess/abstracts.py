@@ -298,10 +298,13 @@ class GameModeBase(ABC):
         if fig is None and defending is None:
             raise ValueError("Field is empty, specify `defending` color.")
 
-        elif fig is None:
+        elif defending is not None:
             defending_team = defending
-        else:
+
+        elif fig is not None:
             defending_team = fig.team
+        else:
+            raise ValueError("Else?")
 
         if field:
             positions_to_check = [field]
@@ -312,8 +315,7 @@ class GameModeBase(ABC):
             for target in positions_to_check:
                 for pos, fig in self.board.figs_on_board.items():
                     if fig.team != defending_team:
-                        args = self._move_checker.args_for_reach_checking(pos, target)
-                        attack_reach = self._move_checker.can_fig_reach_attack(*args)
+                        attack_reach = self._move_checker.can_fig_reach_attack(self.board, fig, pos, target)
                         if attack_reach:
                             return True
 
@@ -321,8 +323,8 @@ class GameModeBase(ABC):
             for target in positions_to_check:
                 for pos, fig in self.board.figs_on_board.items():
                     if fig.team == defending_team:
-                        args = self._move_checker.args_for_reach_checking(pos, target)
-                        attack_reach = self._move_checker.can_fig_reach_attack(*args)
+                        args = self._move_checker.args_for_reach_checking(fig, pos, target)
+                        attack_reach = self._move_checker.can_fig_reach_attack(self.board, fig, pos, target)
                         if attack_reach:
                             return True
 
@@ -331,8 +333,7 @@ class GameModeBase(ABC):
             for target in positions_to_check:
                 for pos, fig in self.board.figs_on_board.items():
                     if fig.team != defending_team:
-                        args = self._move_checker.args_for_reach_checking(pos, target)
-                        attack_reach = self._move_checker.can_fig_reach_attack(*args)
+                        attack_reach = self._move_checker.can_fig_reach_attack(self.board, fig, pos, target)
                         if attack_reach:
                             attacks_num += 1
             warn("Temporary checking: num>len")
@@ -384,6 +385,10 @@ class GameModeBase(ABC):
 
 
 class FigMoveAnalyzer:
+    def __init__(self):
+        self.game = None
+        self.board = None
+
     def check(self, game: GameModeBase, board: BoardBase, f1: move_tuple, f2: move_tuple):
         self.game = game
         self.board = board
@@ -397,28 +402,28 @@ class FigMoveAnalyzer:
         return self._is_move_valid(f1, f2)
 
     def _is_move_valid(self, f1, f2):
-        fig1 = self.board.get(f1)
+        fig = self.board.get(f1)
         target = self.board.get(f2)
 
         "Check if figure is here"
-        if fig1 is None:
+        if fig is None:
             return False
 
         "Wrong figure, Turn for other player"
-        if self.game.current_player_turn != fig1.color:
+        if self.game.current_player_turn != fig.color:
             return False
 
-        move_reach, attack_reach = self.can_fig_reach(f1, f2)
-        can_move = self._can_fig_move(fig1, target)
-        can_attack = self._can_fig_attack(fig1, target)
-        print(f"mv reach:{move_reach}, attk reach:{attack_reach}")
+        move_reach, attack_reach = self._can_fig_reach(fig, f1, f2)
+        can_move = self._can_fig_move(fig, target)
+        can_attack = self._can_fig_attack(fig, target)
+        # print(f"mv reach:{move_reach}, attk reach:{attack_reach}")
 
         if target is None and can_move and move_reach:
             return True
         if target is not None and can_attack and attack_reach:
             return True
 
-        self._can_fig_special(fig1, f1, f2)
+        self._can_fig_special(fig, f1, f2)
         return False
 
     @staticmethod
@@ -435,11 +440,11 @@ class FigMoveAnalyzer:
         if target is None:
             return True
 
-    def can_fig_reach(self, f1, f2):
-        args = self.args_for_reach_checking(f1, f2)
+    def _can_fig_reach(self, fig, f1, f2):
+        args = self.args_for_reach_checking(fig, f1, f2)
         fig, move, direction, dist, _, _ = args
 
-        move_reach = self.can_fig_reach_move(*args)
+        move_reach = self._can_fig_reach_move(*args)
 
         "If params are same, then reach is the same"
         if fig.is_move_infinite == fig.is_attack_infinite and \
@@ -447,22 +452,21 @@ class FigMoveAnalyzer:
                 fig.move_patterns == fig.attack_patterns:
             attack_reach = move_reach
         else:
-            attack_reach = self.can_fig_reach_attack(*args)
+            attack_reach = self._can_fig_reach_attack(*args)
 
         return move_reach, attack_reach
 
-    def args_for_reach_checking(self, f1, f2):
+    @staticmethod
+    def args_for_reach_checking(fig, f1, f2):
         move = f2[0] - f1[0], f2[1] - f1[1]
-        fig = self.board.get(f1)
 
         direction = tuple(np.sign(np.array(move)))
         dist = max((abs(move[0]), abs(move[1])))
         return fig, move, direction, dist, f1, f2
 
-    def can_fig_reach_move(self, fig, move, direction, dist, f1, f2):
+    def _can_fig_reach_move(self, fig, move, direction, dist, f1, f2):
         if dist == 1:
             if move in fig.move_patterns:
-                self.move_reach = True
                 return True
 
         if fig.is_move_infinite:
@@ -481,7 +485,12 @@ class FigMoveAnalyzer:
             else:
                 return False
 
-    def can_fig_reach_attack(self, fig, move, direction, dist, f1, f2):
+    def can_fig_reach_attack(self, board, fig, f1, f2):
+        self.board = board
+        args = self.args_for_reach_checking(fig, f1, f2)
+        return self._can_fig_reach_attack(*args)
+
+    def _can_fig_reach_attack(self, fig, move, direction, dist, f1, f2):
         if dist == 1:
             if move in fig.attack_patterns:
                 return True
@@ -500,6 +509,13 @@ class FigMoveAnalyzer:
                 return True
             else:
                 return False
+
+    def infinite_reach_checker(self, game, board, f1, f2):
+        self.game = game
+        self.board = board
+        fig = board.get(f1)
+        args = self.args_for_reach_checking(fig, f1, f2)
+        return self._infinite_reach_checker(*args)
 
     def _infinite_reach_checker(self, start, direction, end=None):
         x, y = start
