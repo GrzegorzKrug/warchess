@@ -3,6 +3,7 @@ from collections import namedtuple
 from copy import deepcopy
 
 from typing import Any, Tuple, List, AnyStr, Union, Iterable
+from warnings import warn
 
 import numpy as np
 
@@ -24,28 +25,34 @@ def get_right_tuple(tuplelike):
 
 
 class FigureBase(ABC):
-
-    def __init__(self, color=0, direction=None, was_moved=False,
-                 air_move=False, air_attack=False, stationary_attack=False, infinite_move=False):
+    def __init__(self, color=0, team=None, face_direction=None, was_moved=False,
+                 air_move=False, air_attack=False, stationary_attack=False,
+                 inf_move=False, inf_attack=False):
         color = int(color)
-        if direction is None:
+        if face_direction is None:
             direction = color
         else:
-            direction = int(direction)
+            direction = int(face_direction)
 
         assert 0 <= direction <= 3, "Figure can be only move in 4 directions"
 
         self.color = color
+        if team is None:
+            self.team = color
+        else:
+            self.team = int(team)
         self.direction = direction
         self.was_moved = was_moved
 
-        self.is_air_attack = air_attack
         self.is_air_move = air_move
-        self.is_attack_stationary = stationary_attack
-        self.is_move_infinite = infinite_move
+        self.is_move_infinite = inf_move
 
-        self._move_pattern = None
-        self._attack_pattern = None
+        self.is_air_attack = air_attack
+        self.is_attack_infinite = inf_attack
+        self.is_attack_stationary = stationary_attack
+
+        self._move_patterns = None
+        self._attack_patterns = None
         self._specials = None
 
     def move(self):
@@ -55,12 +62,12 @@ class FigureBase(ABC):
         pass
 
     @property
-    def move_pattern(self):
-        return self._move_pattern
+    def move_patterns(self):
+        return self._move_patterns
 
     @property
-    def attack_pattern(self):
-        return self._attack_pattern
+    def attack_patterns(self):
+        return self._attack_patterns
 
     @property
     def specials(self):
@@ -117,11 +124,11 @@ class SpecialBase(ABC):
         return self._named_tup
 
     @abstractmethod
-    def is_valid(self, board, f1, f2):
+    def is_valid(self, game, board, f1, f2):
         pass
 
     @abstractmethod
-    def apply(self, board, f1, f2):
+    def apply(self, game, board, f1, f2):
         pass
 
     def counter_check(self):
@@ -182,7 +189,10 @@ class BoardBase(ABC):
     def change_fig(self, field, fig):
         self.figs_on_board[field] = fig
 
-    def print_table(self, justify=8, flip=False):
+    def print_board(self, *a, **kw):
+        self.print_table(*a, **kw)
+
+    def print_table(self, justify=7, flip=False):
         if flip:
             rang = range(8)
         else:
@@ -190,6 +200,7 @@ class BoardBase(ABC):
 
         print("Board:")
         for y in rang:
+            print(f"{y + 1:^3} ", end="")
             for x in range(8):
                 fig = self.figs_on_board.get((x, y), None)
                 if fig:
@@ -197,9 +208,14 @@ class BoardBase(ABC):
                 else:
                     text = ''
 
-                text = text.center(justify)
+                # text = text.center(justify)
+                text = f"{text:<{justify}}"
+
                 print(f"{text}", end='')
             print()
+        labs = "ABCDEFGH"
+        text = " " * 3 + ''.join([f"{let:^{justify}}" for let in labs])
+        print(text)
 
 
 class GameModeBase(ABC):
@@ -219,22 +235,18 @@ class GameModeBase(ABC):
         pass
 
     def _is_move_valid(self, f1, f2):
-        print(f"\n\nChecking: {f1}->{f2}")
         check = self._move_checker.check(self, self.board, f1, f2)
         return check or self._move_checker.can_special
 
     def _resolve_action(self, f1, f2):
         is_ok = self._move_checker.check(self, self.board, f1, f2)
-        print()
-        print(f"is ok: {is_ok}, {f1}, {f2}")
-        print(f"spec: {self._move_checker.can_special}")
         tmp_brd = deepcopy(self.board)
         if is_ok:
             self.board.move_figure(f1, f2)
             self._post_move_actions(f2)
         elif self._move_checker.can_special:
             spc = self._move_checker.spc
-            spc.apply(self.board, f1, f2)
+            spc.apply(self, self.board, f1, f2)
         else:
             raise ValueError("Incorrect move")
 
@@ -245,6 +257,91 @@ class GameModeBase(ABC):
             raise ValueError(f"Invalid move!{f1} to {f2}. reverting board")
 
         self.current_player_turn = (self.current_player_turn + 1) % self.players_num
+
+    def under_threat(self, field=None, fields=None, defending: int = None, mode='any'):
+        """
+        Check if
+        Args:
+            field:
+            fields:
+            defending: int: color or team that is defending position
+            mode:
+                `any` return True if any field is under threat
+                `all` return True if all fields are under threat
+                'cover' return True if friendly is covering
+
+        Returns:
+
+        """
+        "Input checking"
+        if field is None and fields is None:
+            raise ValueError("Specify field or fields!")
+        elif mode not in ['any', 'all', 'cover']:
+            raise ValueError(f"Specify correct mode, not: {mode}")
+        elif field is not None and fields is not None:
+            raise ValueError("Specify only field or fields, not both.")
+
+        if defending is None:
+            if field:
+                fig = self.board.get(field)
+                if fig is None:
+                    raise ValueError("Field is empty, specify 'defending' team")
+                else:
+                    defending = fig.color
+            else:
+                raise ValueError("Specify 'defending' team when using 'fields'")
+
+        elif type(defending) is not int:
+            raise ValueError(f"defending should be int, but got: {type(defending)}")
+
+        fig = self.board.get(field)
+        if fig is None and defending is None:
+            raise ValueError("Field is empty, specify `defending` color.")
+
+        elif fig is None:
+            defending_team = defending
+        else:
+            defending_team = fig.team
+
+        if field:
+            positions_to_check = [field]
+        else:
+            positions_to_check = fields
+
+        if mode == "any":
+            for target in positions_to_check:
+                for pos, fig in self.board.figs_on_board.items():
+                    if fig.team != defending_team:
+                        args = self._move_checker.args_for_reach_checking(pos, target)
+                        attack_reach = self._move_checker.can_fig_reach_attack(*args)
+                        if attack_reach:
+                            return True
+
+        elif mode == "cover":
+            for target in positions_to_check:
+                for pos, fig in self.board.figs_on_board.items():
+                    if fig.team == defending_team:
+                        args = self._move_checker.args_for_reach_checking(pos, target)
+                        attack_reach = self._move_checker.can_fig_reach_attack(*args)
+                        if attack_reach:
+                            return True
+
+        else:
+            attacks_num = 0
+            for target in positions_to_check:
+                for pos, fig in self.board.figs_on_board.items():
+                    if fig.team != defending_team:
+                        args = self._move_checker.args_for_reach_checking(pos, target)
+                        attack_reach = self._move_checker.can_fig_reach_attack(*args)
+                        if attack_reach:
+                            attacks_num += 1
+            warn("Temporary checking: num>len")
+            if attacks_num == len(positions_to_check):
+                return True
+            elif attacks_num > len(positions_to_check):
+                raise ValueError("How there is more checks?")
+            else:
+                return False
 
     @abstractmethod
     def check_rules_for(self, color):
@@ -290,10 +387,10 @@ class FigMoveAnalyzer:
     def check(self, game: GameModeBase, board: BoardBase, f1: move_tuple, f2: move_tuple):
         self.game = game
         self.board = board
-        self.move_reach = False
-        self.attack_reach = False
-        self.f1 = f1
-        self.f2 = f2
+        # self.move_reach = False
+        # self.attack_reach = False
+        # self.f1 = f1
+        # self.f2 = f2
         self.can_special = False
         self.spc = None
 
@@ -311,31 +408,24 @@ class FigMoveAnalyzer:
         if self.game.current_player_turn != fig1.color:
             return False
 
-        self._can_fig_reach(f1, f2)
+        move_reach, attack_reach = self.can_fig_reach(f1, f2)
         can_move = self._can_fig_move(fig1, target)
         can_attack = self._can_fig_attack(fig1, target)
-        # print(f"reach:{reach}, can_mv: {can_move}, can_atk:{can_attack}")
-        print(self.attack_reach, self.move_reach)
+        print(f"mv reach:{move_reach}, attk reach:{attack_reach}")
 
-        if target is not None and can_attack and self.attack_reach:
+        if target is None and can_move and move_reach:
             return True
-        elif target is None and can_move and self.move_reach:
+        if target is not None and can_attack and attack_reach:
             return True
 
         self._can_fig_special(fig1, f1, f2)
         return False
-        # if target is None:
-        #     return self.move_reach
-        # else:
-        #     if target.color == fig.color:
-        #         return False
-        #     return self.attack_reach
 
     @staticmethod
     def _can_fig_attack(fig: FigureBase, target: FigureBase):
         if target is None:
             return False
-        if fig.color != target.color:
+        if fig.team != target.team:
             return True
         else:
             return False
@@ -345,87 +435,108 @@ class FigMoveAnalyzer:
         if target is None:
             return True
 
-    def _can_fig_reach(self, f1, f2):
+    def can_fig_reach(self, f1, f2):
+        args = self.args_for_reach_checking(f1, f2)
+        fig, move, direction, dist, _, _ = args
+
+        move_reach = self.can_fig_reach_move(*args)
+
+        "If params are same, then reach is the same"
+        if fig.is_move_infinite == fig.is_attack_infinite and \
+                fig.is_air_move == fig.is_air_attack and \
+                fig.move_patterns == fig.attack_patterns:
+            attack_reach = move_reach
+        else:
+            attack_reach = self.can_fig_reach_attack(*args)
+
+        return move_reach, attack_reach
+
+    def args_for_reach_checking(self, f1, f2):
         move = f2[0] - f1[0], f2[1] - f1[1]
         fig = self.board.get(f1)
 
-        # move_diag = abs(move[0]) == abs(move[1])
-        # move_lin = move[0] == 0 or move[1] == 0
         direction = tuple(np.sign(np.array(move)))
         dist = max((abs(move[0]), abs(move[1])))
-        # print(f"from: {f1} to {f2}")
-        # print(f"move: {move}")
-        # print(f"Dist: {dist}")
+        return fig, move, direction, dist, f1, f2
 
+    def can_fig_reach_move(self, fig, move, direction, dist, f1, f2):
         if dist == 1:
-            if move in fig.move_pattern:
+            if move in fig.move_patterns:
                 self.move_reach = True
+                return True
 
-            if move in fig.attack_pattern:
-                self.attack_reach = True
-            return True
-
-        # print(fig)
-        # print("infi:", fig.is_move_infinite)
         if fig.is_move_infinite:
-            if fig.is_air_move and direction in fig.move_pattern:
-                self.move_reach = True
-            elif direction in fig.move_pattern:
-                tmp_move = f1
-                while True:
-                    print("loop")
-                    tmp_move = tmp_move[0] + direction[0], tmp_move[1] + direction[1]
-                    is_fig = self.board.get(tmp_move)
-                    if is_fig is not None:
-                        self.move_reach = False
-                        break
-                    if tmp_move == f2:
-                        self.move_reach = True
-                        break
-            else:
-                raise ValueError(f"This is not valid move to long pattern: {move}")
-
-            if fig.is_air_attack and direction in fig.attack_pattern:
-                self.attack_reach = True
-            elif direction in fig.attack_pattern:
-                tmp_move = f1
-                while True:
-                    print("loop2")
-                    tmp_move = tmp_move[0] + direction[0], tmp_move[1] + direction[1]
-                    is_fig = self.board.get(tmp_move)
-                    if tmp_move == f2:
-                        self.attack_reach = True
-                        break
-                    if is_fig is not None:
-                        self.attack_reach = False
-                        break
-            else:
-                raise ValueError(f"This is not valid move to long pattern: {move}")
-
+            if fig.is_air_move and direction in fig.move_patterns:
+                return True
+            elif direction in fig.move_patterns:
+                fields = self._infinite_reach_checker(f1, direction, f2)
+                if f2 in fields:
+                    return True
+                else:
+                    return False
         else:
-            "Air pattern attacks"
-            if fig.is_air_move and move in fig.move_pattern:
-                self.move_reach = True
-            if fig.is_air_attack and move in fig.attack_pattern:
-                self.attack_reach = True
+            "Air pattern moves"
+            if fig.is_air_move and move in fig.move_patterns:
+                return True
+            else:
+                return False
 
-        if self.move_reach or self.attack_reach:
-            return True
+    def can_fig_reach_attack(self, fig, move, direction, dist, f1, f2):
+        if dist == 1:
+            if move in fig.attack_patterns:
+                return True
+
+        if fig.is_attack_infinite:
+            if fig.is_air_attack and direction in fig.attack_patterns:
+                return True
+            elif direction in fig.attack_patterns:
+                fields = self._infinite_reach_checker(f1, direction, f2)
+                if f2 in fields:
+                    return True
+                else:
+                    return False
+        else:
+            if fig.is_air_attack and move in fig.attack_patterns:
+                return True
+            else:
+                return False
+
+    def _infinite_reach_checker(self, start, direction, end=None):
+        x, y = start
+        valid_moves = []
+        its = 0
+        while True and its < 100:
+            its += 1
+            x = x + direction[0]
+            y = y + direction[1]
+            tmp_move = x, y
+            is_fig = self.board.get(tmp_move)
+
+            if x < 0 or y < 0:
+                break
+            elif x >= self.board.width or y >= self.board.height:
+                break
+
+            if end and tmp_move == end:
+                valid_moves.append(tmp_move)
+                break
+
+            elif is_fig is not None:
+                valid_moves.append(tmp_move)
+                break
+            else:
+                valid_moves.append(tmp_move)
+        return valid_moves
 
     def _is_team_checked(self, color):
         pass
 
     def _can_fig_special(self, fig: FigureBase, f1, f2):
-        print("\nChecking specials")
-        # print(fig)
-        # print(fig.specials)
 
         if fig.specials is not None:
             for spc in fig.specials:
-                print(f"Checking: {spc}")
-                valid = spc.is_valid(self.board, f1, f2)
+                valid = spc.is_valid(self.game, self.board, f1, f2)
                 if valid:
-                    print(f"valid {valid}")
                     self.can_special = True
                     self.spc = spc
                     return True

@@ -8,8 +8,8 @@ def test_1_():
     figs = [f(n) for n in range(2) for f in figs]
     for f in figs:
         assert len(f.name) > 0, f"{f}"
-        assert len(f._move_pattern) > 0, f"{f}"
-        assert len(f._attack_pattern) > 0, f"{f}"
+        assert len(f._move_patterns) > 0, f"{f}"
+        assert len(f._attack_patterns) > 0, f"{f}"
 
 
 def test_1_fig_attrs():
@@ -17,8 +17,10 @@ def test_1_fig_attrs():
     figs = [f(n) for n in range(2) for f in figs]
     for f in figs:
         assert len(f.name) > 0, f"{f}"
-        assert len(f._move_pattern) > 0, f"{f}"
-        assert len(f._attack_pattern) > 0, f"{f}"
+        assert len(f._move_patterns) > 0, f"{f}"
+        assert len(f._attack_patterns) > 0, f"{f}"
+        assert len(f.move_patterns) > 0, f"{f}"
+        assert len(f.attack_patterns) > 0, f"{f}"
         assert hasattr(f, '_specials')
         assert not hasattr(f, '_special')
 
@@ -122,7 +124,7 @@ def test_7_white_moves():
     assert not g._is_move_valid(*g.strings_to_tuple("e2", "e3"))
 
 
-def test_8_Pawn():
+def test_8_pawn():
     g = ClassicGame()
     g.load_fen("rnbqkbr1/p1p5/1p6/2npPppp/5PP1/P1P4P/1P1P4/RNBQKB1R w KQq - 1 12")
     g.board.print_table()
@@ -137,7 +139,7 @@ def test_8_Pawn():
     assert not g._is_move_valid(*g.strings_to_tuple("f4", "f5"))
 
 
-def test_9_Pawn_Black():
+def test_9_pawn_black():
     g = ClassicGame()
     g.load_fen("rnbqkbr1/p1p5/1p6/2npPppp/5PP1/P1P4P/1P1P3R/RNBQKB2 b Qq - 2 12")
     g.board.print_table()
@@ -155,7 +157,7 @@ def test_9_Pawn_Black():
     assert not g._is_move_valid(*g.strings_to_tuple("c7", "b6"))
 
 
-def test_9_Pawn_Black2():
+def test_9_pawn_black2():
     g = ClassicGame()
     g.load_fen("rnbqkbr1/p1p5/1p6/2npPppp/5PP1/P1P4P/1P1P3R/RNBQKB2 b Qq - 2 12")
     g.board.print_table()
@@ -169,7 +171,7 @@ def test_9_Pawn_Black2():
     assert not g._is_move_valid(*g.strings_to_tuple("c7", "d6"))
 
 
-def test_9_Pawn_white_2():
+def test_9_pawn_white_2():
     g = ClassicGame()
     g.load_fen("rnbqkbr1/p1p5/1p6/2PpPppp/4nPP1/P6P/1P1P3R/RNBQKB2 w Qq - 1 15")
     g.board.print_table()
@@ -199,10 +201,10 @@ def test_10_castle_w_2_check():
     assert g._is_move_valid(*g.strings_to_tuple("e1", "f1"))
     assert g._is_move_valid(*g.strings_to_tuple("e1", "e2"))
 
-    assert not g._is_move_valid(*g.strings_to_tuple("e1", "c1"))
-    assert not g._is_move_valid(*g.strings_to_tuple("e1", "g1"))
-    assert not g._is_move_valid(*g.strings_to_tuple("e1", "d1"))
-    assert not g._is_move_valid(*g.strings_to_tuple("e1", "f1"))
+    assert not g._is_move_valid(*g.strings_to_tuple("e1", "c1")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("e1", "g1")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("e1", "d2")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("e1", "f2")), "Not valid move"
 
 
 def test_10_castle_w_3_blockade():
@@ -215,7 +217,7 @@ def test_10_castle_w_3_blockade():
     assert g._is_move_valid(*g.strings_to_tuple("e1", "e2"))
 
     assert g._is_move_valid(*g.strings_to_tuple("e1", "g1"))
-    assert not g._is_move_valid(*g.strings_to_tuple("e1", "c1"))
+    assert not g._is_move_valid(*g.strings_to_tuple("e1", "c1")), "Not valid move"
 
 
 def test_10_castle_w_move():
@@ -332,59 +334,156 @@ def test_14_move_and_check():
     g.load_fen("kp2q3/pq5q/6P1/q2QNP2/q1QBKR1q/5N2/2N1R1N1/1q2q2q w - - 0 1")
     g.board.print_table()
 
-    assert g._is_move_valid(*g.strings_to_tuple("c4", "b4"))
-    assert g._is_move_valid(*g.strings_to_tuple("c4", "a4"))
-    assert g._is_move_valid(*g.strings_to_tuple("c4", "c5"))
-    assert g._is_move_valid(*g.strings_to_tuple("c4", "c3"))
-    assert not g._is_move_valid(*g.strings_to_tuple("c4", "a2"))
+    assert g._is_move_valid(*g.strings_to_tuple("c4", "b4")), "Valid move"
+    assert g._is_move_valid(*g.strings_to_tuple("c4", "a4")), "Valid move"
+    assert g._is_move_valid(*g.strings_to_tuple("c4", "c5")), "Valid move"
+    assert g._is_move_valid(*g.strings_to_tuple("c4", "c3")), "Valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("c4", "a2")), "Not valid move"
 
-    assert g._is_move_valid(*g.strings_to_tuple("d5", "c6"))
-    assert g._is_move_valid(*g.strings_to_tuple("d5", "b7"))
-    assert not g._is_move_valid(*g.strings_to_tuple("d5", "a8"))
-    assert not g._is_move_valid(*g.strings_to_tuple("d5", "d6"))
-    assert not g._is_move_valid(*g.strings_to_tuple("d5", "c5"))
-    assert not g._is_move_valid(*g.strings_to_tuple("d5", "e4"))
+    assert g._is_move_valid(*g.strings_to_tuple("d5", "c6")), "Valid move"
+    assert g._is_move_valid(*g.strings_to_tuple("d5", "b7")), "Valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("d5", "a8")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("d5", "d6")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("d5", "c5")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("d5", "e4")), "Not valid move"
 
-    assert not g._is_move_valid(*g.strings_to_tuple("c2", "e1"))
+    assert not g._is_move_valid(*g.strings_to_tuple("c2", "e1")), "Not valid move"
 
-    assert g._is_move_valid(*g.strings_to_tuple("f4", "h4"))
-    assert g._is_move_valid(*g.strings_to_tuple("f4", "g4"))
-    assert not g._is_move_valid(*g.strings_to_tuple("f4", "f3"))
-    assert not g._is_move_valid(*g.strings_to_tuple("f4", "f5"))
-    assert not g._is_move_valid(*g.strings_to_tuple("f4", "f2"))
-    assert not g._is_move_valid(*g.strings_to_tuple("f4", "f1"))
-    assert not g._is_move_valid(*g.strings_to_tuple("f4", "e4"))
+    assert g._is_move_valid(*g.strings_to_tuple("f4", "h4")), "Valid move"
+    assert g._is_move_valid(*g.strings_to_tuple("f4", "g4")), "Valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("f4", "f3")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("f4", "f5")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("f4", "f2")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("f4", "f1")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("f4", "e4")), "Not valid move"
 
-    assert g._is_move_valid(*g.strings_to_tuple("f3", "h4"))
-    assert g._is_move_valid(*g.strings_to_tuple("f3", "e1"))
-    assert g._is_move_valid(*g.strings_to_tuple("f3", "h2"))
+    assert g._is_move_valid(*g.strings_to_tuple("f3", "h4")), "Valid move"
+    assert g._is_move_valid(*g.strings_to_tuple("f3", "e1")), "Valid move"
+    assert g._is_move_valid(*g.strings_to_tuple("f3", "h2")), "Valid move"
 
-    assert g._is_move_valid(*g.strings_to_tuple("g2", "h4"))
-    assert g._is_move_valid(*g.strings_to_tuple("g2", "e1"))
+    assert g._is_move_valid(*g.strings_to_tuple("g2", "h4")), "Valid move"
+    assert g._is_move_valid(*g.strings_to_tuple("g2", "e1")), "Valid move"
 
-    assert g._is_move_valid(*g.strings_to_tuple("e2", "e1"))
-    assert g._is_move_valid(*g.strings_to_tuple("e2", "e3"))
-    assert not g._is_move_valid(*g.strings_to_tuple("e2", "f1"))
-    assert not g._is_move_valid(*g.strings_to_tuple("e2", "d1"))
-    assert not g._is_move_valid(*g.strings_to_tuple("e2", "e4"))
+    assert g._is_move_valid(*g.strings_to_tuple("e2", "e1")), "Valid move"
+    assert g._is_move_valid(*g.strings_to_tuple("e2", "e3")), "Valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("e2", "f1")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("e2", "d1")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("e2", "e4")), "Not valid move"
 
-    assert not g._is_move_valid(*g.strings_to_tuple("c2", "e4"))
-    assert not g._is_move_valid(*g.strings_to_tuple("c2", "e1"))
-    assert not g._is_move_valid(*g.strings_to_tuple("c2", "e3"))
-    assert not g._is_move_valid(*g.strings_to_tuple("c2", "b4"))
-
-
-def test_14_():
-    pass
+    assert not g._is_move_valid(*g.strings_to_tuple("c2", "e4")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("c2", "e1")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("c2", "e3")), "Not valid move"
+    assert not g._is_move_valid(*g.strings_to_tuple("c2", "b4")), "Not valid move"
 
 
-def test_15_():
-    pass
+def test_15_under_threat():
+    g = ClassicGame()
+    g.load_fen("r3kbnr/pp2pppp/2ppq3/2n5/2P5/BPNQPN2/P2P1PPP/R3K2R w KQkq - 1 12")
+    g.board.print_table()
+
+    assert g.under_threat(*g.strings_to_tuple("c4"))
+    assert g.under_threat(*g.strings_to_tuple("e3"))
+    assert g.under_threat(*g.strings_to_tuple("d6"))
+    assert g.under_threat(*g.strings_to_tuple("c5"))
+
+    assert not g.under_threat(*g.strings_to_tuple("e1"))
+    assert not g.under_threat(*g.strings_to_tuple("h1"))
+    assert not g.under_threat(*g.strings_to_tuple("a1"))
+    assert not g.under_threat(*g.strings_to_tuple("g8"))
+    assert not g.under_threat(*g.strings_to_tuple("g8"))
 
 
-def test_16_():
-    pass
+def test_15_under_threat_2():
+    g = ClassicGame()
+    g.load_fen("r3r1k1/pppb1ppp/5n2/3P4/2P5/2NB1P2/PP1q3P/2KR1R2 w - - 0 15")
+    g.board.print_table()
+
+    moves = [
+            'h1', 'g1', 'e1', 'e2', 'e4', 'c1', 'b1', 'c2', 'd2', 'd1', 'd5', 'e4',
+            'e6', 'f3', 'g4', 'g3', 'a3', 'b3', 'c6', 'e6', 'f2', 'a4', 'b5', 'f5',
+            'g6', 'h7', 'f3'
+
+    ]
+    for mv in moves:
+        assert g.under_threat(*g.strings_to_tuple(mv), defending=1), f"White is not attacking {mv}"
 
 
-def test_17_():
+def test_16_counter_checks():
+    g = ClassicGame()
+    g.load_fen("r3r1k1/pppb1ppp/5n2/3P4/2P5/2NB1P2/PP1q3P/2KR1R2 w - - 0 15")
+    g.board.print_table()
+
+    moves = [
+            ('c1', 'b1'),
+            ('d1', 'd2'),
+            ('c1', 'd2'),
+    ]
+    for pair in moves:
+        assert g._is_move_valid(*g.strings_to_tuple(*pair)), "This is not white valid move"
+
+    moves = [
+            ('f1', 'f2'),
+            ('f1', 'e1'),
+            ('d3', 'c2'),
+            ('c3', 'b2'),
+            ('d3', 'h7'),
+            ('f3', 'f4'),
+            ('f3', 'f5'),
+            ('d5', 'd6'),
+            ('c4', 'c5'),
+            ('c4', 'c6'),
+            ('d1', 'c2'),
+            ('d1', 'e1'),
+            ('d1', 'e2'),
+            ('c1', 'b2'),
+    ]
+    for pair in moves:
+        assert not g._is_move_valid(*g.strings_to_tuple(*pair)), f"This move is invalid for white: {pair}"
+
+
+def test_17_loading_fen_color_check():
+    g = ClassicGame()
+    g.load_fen("r3kbnr/pp2pppp/2ppq3/3Q4/2P5/BPNnPN2/P2P1PPP/R3K2R w KQkq - 3 13")
+    g.board.print_table()
+
+    black_poses = [
+            "d3",
+            "a8",
+            "a7",
+            "e6",
+            "d6",
+            "c6",
+            "e8",
+            "f8",
+            "g8",
+            "h7",
+            "f7",
+            "g7",
+            "h7",
+            "c6",
+    ]
+    for pos in black_poses:
+        assert g.board.get(*g.strings_to_tuple(pos)).team == 1, f"Fig on {pos} is black!"
+    white_poses = [
+            "e1",
+            "a1",
+            "h1",
+            "a3",
+            "a2",
+            "b3",
+            "c3",
+            "c4",
+            "d2",
+            "d5",
+            "e3",
+            "f2",
+            "f3",
+            "g2",
+            "h2",
+    ]
+    for pos in white_poses:
+        assert g.board.get(*g.strings_to_tuple(pos)).team == 0, f"Fig on {pos} is white!"
+
+
+def test_18_():
     pass
