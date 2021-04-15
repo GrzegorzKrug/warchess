@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod, abstractproperty
 from collections import namedtuple
 from itertools import product
+from warnings import warn
 
 from copy import copy, deepcopy
 
@@ -361,26 +362,19 @@ class Rook(FigureBase):
 
 
 class Board(BoardBase):
-    pass
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
 
-
-#     def __init__(self, w=8, h=8):
-#         self.board = dict()
-#         self.figures = dict()
-#
-#     def move_figure(self):
-#         pass
+    def group_figs(self, fig):
+        pass
 
 
 class ClassicGame(GameModeBase):
     def __init__(self):
         super().__init__()
         self.board = Board(8, 8)
-        self.kings = dict()
+        self.kings = {num: dict() for num in range(self.players_num)}
         self.load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-
-    def _is_game_over(self):
-        pass
 
     def load_fen(self, fen: str):
         """
@@ -425,7 +419,7 @@ class ClassicGame(GameModeBase):
                         break
                     continue
                 if isinstance(fig, King):
-                    self.kings[fig.color] = fig
+                    self.kings[fig.color][x, y] = fig
 
         self.current_player_turn = 0 if cur_player == "w" else 1
 
@@ -448,13 +442,6 @@ class ClassicGame(GameModeBase):
 
         if enpasant != "-":
             x, y = enpasant
-
-            # if 97 <= ord(x) <= 104:  # a <= x <= h
-            #     color_who_rushed = 0  # White rushed
-            # elif 65 <= ord(x) <= 72:  # A <= x <= H
-            #     color_who_rushed = 1  # Black rushed
-            # else:
-            #     raise ValueError(f"This is not correct position for enpassant: {x}{y}")
 
             y = int(y)
             if y <= 3:
@@ -502,12 +489,17 @@ class ClassicGame(GameModeBase):
             return True
         return False
 
-    def check_rules_for(self, color):
-        return not self._is_team_checked(color)
+    def are_rules_ok(self, color):
+        return not self._is_player_checked(color)
 
-    def _is_team_checked(self, color):
-        self
+    def _is_player_checked(self, color):
+        kgs = self.kings[color]
+        for pos, king in kgs.items():
+            self.under_threat(field=pos, defending=king.team)
         return False
+
+    def _is_game_over(self):
+        pass
 
     def _post_move_actions(self, field2):
         if self._is_promotion(field2):
@@ -519,9 +511,19 @@ class ClassicGame(GameModeBase):
         self.board.change_fig(field2, fig)
 
     def get_promotion_fig(self, color):
+        warn("static queen return")
         return Queen(color)
 
-    def strings_to_tuple(self, *arrs):
+    def strings_to_ints(self, *arrs):
+        """
+        Translate any number of string into int tuples
+        Args:
+            *arrs:
+
+        Returns:
+            tuple(moves)
+
+        """
         out = []
         if type(arrs) is str:
             arrs = [arrs]
@@ -543,14 +545,5 @@ if __name__ == "__main__":
     g.load_fen("r3r1k1/pppb1ppp/5n2/3P4/2P5/2NB1P2/PP1q3P/2KR1R2 w - - 0 15")
     g.board.print_table()
 
-    moves = [
-            'h1', 'g1', 'e1', 'e2', 'e4', 'c1', 'b1', 'c2', 'd2', 'd1', 'd5', 'e4',
-            'e6', 'f3', 'g4', 'g3', 'a3', 'b3', 'c6', 'e6', 'f2', 'a4', 'b5', 'f5',
-            'g6', 'h7', 'f3'
-
-    ]
-    for mv in moves:
-        print(mv)
-        if mv == "f3":
-            print(True)
-        assert g.under_threat(*g.strings_to_tuple(mv), defending=1), f"White is not attacking {mv}"
+    g.make_move(g.strings_to_ints("a2", "a3"))
+    g.board.print_table()

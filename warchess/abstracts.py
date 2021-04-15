@@ -15,7 +15,7 @@ attack_tuple = namedtuple("Atck", field_names=["X", "Y"])
 special_tuple = namedtuple("Spec", field_names=["X", "Y"])
 
 
-def get_right_tuple(tuplelike):
+def get_same_tuple(tuplelike):
     if isinstance(tuplelike, move_tuple):
         return move_tuple
     elif isinstance(tuplelike, attack_tuple):
@@ -58,9 +58,6 @@ class FigureBase(ABC):
     def move(self):
         self.was_moved = True
 
-    def clear_special_attr(self):
-        pass
-
     @property
     def move_patterns(self):
         return self._move_patterns
@@ -75,22 +72,22 @@ class FigureBase(ABC):
 
     @staticmethod
     def rotate_pattern(ptrn, right=True):
-        named = get_right_tuple(ptrn[0])
+        named = get_same_tuple(ptrn[0])
         if right:
-            rotated_ptrn = (named(y, -x) for x, y in ptrn)
+            rotated = (named(y, -x) for x, y in ptrn)
         else:
-            rotated_ptrn = (named(-y, x) for x, y in ptrn)
+            rotated = (named(-y, x) for x, y in ptrn)
 
-        return rotated_ptrn
+        return rotated
 
     @staticmethod
     def flip_x_pattern(ptrn):
-        named = get_right_tuple(ptrn[0])
+        named = get_same_tuple(ptrn[0])
         return tuple(named(-x, y) for x, y in ptrn)
 
     @staticmethod
     def flip_y_pattern(ptrn):
-        named = get_right_tuple(ptrn[0])
+        named = get_same_tuple(ptrn[0])
         return tuple(named(x, - y) for x, y in ptrn)
 
     @abstractproperty
@@ -158,45 +155,65 @@ class BoardBase(ABC):
     State and pieces on the board
     """
 
-    def __init__(self, width=8, height=8):
+    def __init__(self, width=8, height=8, extra_width=0, extra_height=0, extra_gap=0):
         self.width = width
         self.height = height
         self.figs_on_board = dict()
-        # self.figures = dict()
+        self.teams = self._empty_2d_dict(2)
+        self.colors = self._empty_2d_dict(2)
 
-    # @abstractmethod
-    def clear_board(self):
-        self.__init__()
+    def _empty_2d_dict(self, n=2):
+        return {num: dict() for num in range(n)}
 
-    # @abstractmethod
+    @property
+    def columns(self):
+        return "ABCDEFGH"
+
     def add_figure(self, field, fig):
         if field in self.figs_on_board:
             raise ValueError(f"There is figure on this {self.figs_on_board[field]}")
         else:
+            color = fig.color
+            team = fig.team
             self.figs_on_board[field] = fig
-
-    def move_figure(self, field1, field2):
-        fig = self.figs_on_board.pop(field1)
-        fig.move()
-        self.figs_on_board[field2] = fig
+            self.colors[color][field] = fig
+            self.teams[team][field] = fig
 
     def remove_figure(self, pos: Tuple):
-        del self.figs_on_board[pos]
+        fig = self.figs_on_board[pos]
+        color = fig.color
+        team = fig.team
+        fig = self.figs_on_board.pop(pos)
+        fig2 = self.teams[team].pop(pos)
+        fig3 = self.colors[color].pop(pos)
+        print(fig, fig2, fig3)
+        assert fig == fig2 == fig3, "Figure is not the same"
+        return fig
+
+    def clear_board(self):
+        self.__init__()
+
+    def move_figure(self, field1, field2):
+        fig = self.remove_figure(field1)
+        self.add_figure(field2, fig)
+        fig.move()
+
+    def change_fig(self, field, fig):
+        """Replacement"""
+
+        self.figs_on_board[field] = fig
 
     def get(self, key):
         return self.figs_on_board.get(key, None)
-
-    def change_fig(self, field, fig):
-        self.figs_on_board[field] = fig
 
     def print_board(self, *a, **kw):
         self.print_table(*a, **kw)
 
     def print_table(self, justify=7, flip=False):
         if flip:
-            rang = range(8)
+            rang = range(self.height)
         else:
-            rang = range(7, -1, -1)
+            rang = range(self.height - 1, -1, -1)
 
         print("Board:")
         for y in rang:
@@ -213,9 +230,24 @@ class BoardBase(ABC):
 
                 print(f"{text}", end='')
             print()
-        labs = "ABCDEFGH"
-        text = " " * 3 + ''.join([f"{let:^{justify}}" for let in labs])
+        text = " " * 3 + ''.join([f"{let:^{justify}}" for let in self.columns])
         print(text)
+
+
+class Action:
+    def __init__(self, f1, f2, fig, spec=None, killed=None):
+        self.f1 = f1
+        self.f2 = f2
+        self.spec = spec
+        self.fig = fig
+        self.killed = killed
+
+    @property
+    def fen_move_notation(self):
+        if self.spec:
+            return self.spec
+        else:
+            return str(self.fig)
 
 
 class GameModeBase(ABC):
@@ -223,15 +255,38 @@ class GameModeBase(ABC):
         self.board = BoardBase()
         self.players_num = 2
         self.current_player_turn = 0
-        self.last_hit = 0
-        self.move_count = 0
+        self.last_hit = 0  # Moves from last hit
+        self.move_count = 0  # Move counter
         self._move_checker = FigMoveAnalyzer()
 
-    def make_move(self, f1, f2):
+    def make_move(self, *args):
+        """
+
+        Args:
+            *args: 2 moves in 1 tuple
+                or 2 moves in separate positional arguments
+
+        Returns:
+
+        """
+        if len(args) == 2:
+            f1, f2 = args
+        else:
+            f1, f2 = args[0]
+
+        self._make_move(f1, f2)
+
+    def _make_move(self, f1, f2):
         self._resolve_action(f1, f2)
 
-    @abstractmethod
     def _post_move_actions(self, field2):
+        """
+        Apply changes to board after player move in same turn,
+        promotion or other.
+        """
+        pass
+
+    def _post_special_actions(self, field2):
         pass
 
     def _is_move_valid(self, f1, f2):
@@ -247,10 +302,11 @@ class GameModeBase(ABC):
         elif self._move_checker.can_special:
             spc = self._move_checker.spc
             spc.apply(self, self.board, f1, f2)
+            self._post_special_actions(f2)
         else:
             raise ValueError("Incorrect move")
 
-        if self.check_rules_for(self.current_player_turn):
+        if self.are_rules_ok(self.current_player_turn):
             "Its ok"
         else:
             self.board = tmp_brd
@@ -323,7 +379,6 @@ class GameModeBase(ABC):
             for target in positions_to_check:
                 for pos, fig in self.board.figs_on_board.items():
                     if fig.team == defending_team:
-                        args = self._move_checker.args_for_reach_checking(fig, pos, target)
                         attack_reach = self._move_checker.can_fig_reach_attack(self.board, fig, pos, target)
                         if attack_reach:
                             return True
@@ -345,19 +400,20 @@ class GameModeBase(ABC):
                 return False
 
     @abstractmethod
-    def check_rules_for(self, color):
+    def are_rules_ok(self, color):
         pass
-
-    # if self._is_move_valid(field1, field2):
-    #     self.board.move_figure(field1, field2)
-    #
-    #     self._post_move_actions(field2)
-    #
-    # else:
-    #     raise ValueError("Not valid move")
 
     @abstractmethod
     def get_proper_figure(self, name, color):
+        """
+        Method for generating pices
+        Args:
+            name:
+            color:
+
+        Returns:
+
+        """
         pass
 
     @abstractmethod
@@ -368,7 +424,16 @@ class GameModeBase(ABC):
     def get_promotion_fig(self, color):
         return None
 
-    def strings_to_tuple(self, *moves):
+    def strings_to_ints(self, *moves):
+        """
+        Field postions notations example: "E1" -> (0, 4)
+        "Returns 2d tuple of given strings"
+        Args:
+            *moves:
+
+        Returns:
+
+        """
         pass
 
     def new_game(self):
