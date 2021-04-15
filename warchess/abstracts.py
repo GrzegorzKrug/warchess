@@ -179,6 +179,14 @@ class BoardBase(ABC):
             self.colors[color][field] = fig
             self.teams[team][field] = fig
 
+    def change_fig(self, field, fig):
+        """Replacement"""
+        color = fig.color
+        team = fig.team
+        self.figs_on_board[field] = fig
+        self.colors[color][field] = fig
+        self.teams[team][field] = fig
+
     def remove_figure(self, pos: Tuple):
         fig = self.figs_on_board[pos]
         color = fig.color
@@ -186,8 +194,7 @@ class BoardBase(ABC):
         fig = self.figs_on_board.pop(pos)
         fig2 = self.teams[team].pop(pos)
         fig3 = self.colors[color].pop(pos)
-        print(fig, fig2, fig3)
-        assert fig == fig2 == fig3, "Figure is not the same"
+        assert fig == fig2 == fig3, "Figures should be the same"
         return fig
 
     def clear_board(self):
@@ -195,15 +202,20 @@ class BoardBase(ABC):
 
     def move_figure(self, field1, field2):
         fig = self.remove_figure(field1)
-        self.add_figure(field2, fig)
+        # self.add_figure(field2, fig)
+        self.change_fig(field2, fig)
         fig.move()
 
-    def change_fig(self, field, fig):
-        """Replacement"""
+    def get(self, *ks):
+        if len(ks) == 1:
+            ks = ks[0]
+            return self._get(ks)
+        elif len(ks) == 2:
+            return self._get(tuple(*ks))
+        else:
+            raise ValueError("Invalid key to get board")
 
-        self.figs_on_board[field] = fig
-
-    def get(self, key):
+    def _get(self, key):
         return self.figs_on_board.get(key, None)
 
     def print_board(self, *a, **kw):
@@ -258,6 +270,7 @@ class GameModeBase(ABC):
         self.last_hit = 0  # Moves from last hit
         self.move_count = 0  # Move counter
         self._move_checker = FigMoveAnalyzer()
+        self.kings = {num: dict() for num in range(self.players_num)}
 
     def make_move(self, *args):
         """
@@ -306,7 +319,7 @@ class GameModeBase(ABC):
         else:
             raise ValueError("Incorrect move")
 
-        if self.are_rules_ok(self.current_player_turn):
+        if self.extra_move_rules(self.current_player_turn):
             "Its ok"
         else:
             self.board = tmp_brd
@@ -340,6 +353,7 @@ class GameModeBase(ABC):
         if defending is None:
             if field:
                 fig = self.board.get(field)
+                print(f"king?:{field} {fig}, {field}")
                 if fig is None:
                     raise ValueError("Field is empty, specify 'defending' team")
                 else:
@@ -399,9 +413,16 @@ class GameModeBase(ABC):
             else:
                 return False
 
-    @abstractmethod
-    def are_rules_ok(self, color):
-        pass
+    def extra_move_rules(self, moving_color):
+        """
+        Valid
+        Args:
+            moving_color:
+
+        Returns:
+
+        """
+        return True
 
     @abstractmethod
     def get_proper_figure(self, name, color):

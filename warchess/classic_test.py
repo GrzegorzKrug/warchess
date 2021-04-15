@@ -30,6 +30,7 @@ def test_1_fig_attrs():
 
 def test_2_():
     g = ClassicGame()
+    g.new_game()
     g.board.print_table()
     g.make_move((0, 1), (0, 2))
     g.make_move((0, 6), (0, 5))
@@ -530,9 +531,52 @@ def test_20_valid_mates():
         assert g._is_game_over(), "Mate! Game over."
 
 
-def test_21_():
+def test_21_invalid_game():
+    g = ClassicGame()
+    with pytest.raises(ValueError):
+        g.load_fen("r3k2r/ppp3pp/8/8/8/8/PPPQQQPP/RNBQKBNR w KQkq - 0 1")
+
+
+def test_22_new_board():
+    g = ClassicGame()
+    g.new_game()
+    for row in [1, 6]:
+        for x in range(8):
+            c = 0 if row == 1 else 1
+            fig = g.board.get((x, row))
+            assert isinstance(fig, (Pawn,)), f"Here should be a pawn: {x}"
+            assert fig.color == c, f"Pawn valid color is: {c}"
+
+    for row in [0, 7]:
+        for col, _val_fig in zip(range(8), [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook]):
+            c = 0 if row == 0 else 1
+            fig = g.board.get((col, row))
+            assert fig.color == c, f"Figure color should be: {c}"
+            assert isinstance(fig, (_val_fig,)), f"This fig should be: {_val_fig}"
+
+
+def test_23_kings_dict():
+    g = ClassicGame()
+    g.new_game()
+    kings = g.kings
+    for c in range(2):
+        assert 0 in kings, f"This color should be in kings: {c}"
+        pos = (4, 0) if c == 0 else (4, 7)
+        assert pos in kings[c], f"King should be here:{pos}"
+        assert len(kings[c]) == 1, f"Only one king for classic game but got: {len(kings[c])}"
+
+
+def test_24_loading_check():
+    raise NotImplementedError
+
+
+def test_25_():
     pass
 
 
-def test_22_():
+def test_26_():
+    pass
+
+
+def test_27_():
     pass

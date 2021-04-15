@@ -365,18 +365,34 @@ class Board(BoardBase):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
 
-    def group_figs(self, fig):
-        pass
-
 
 class ClassicGame(GameModeBase):
     def __init__(self):
         super().__init__()
         self.board = Board(8, 8)
-        self.kings = {num: dict() for num in range(self.players_num)}
-        self.load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        self.checks = {num: False for num in range(self.players_num)}
 
-    def load_fen(self, fen: str):
+    def new_game(self):
+        self.load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        self._initial_checks()
+
+    def _initial_checks(self):
+        for color in range(self.players_num):
+            for pos in self.kings[color]:
+                is_check = self.under_threat(field=pos)
+
+                if is_check and self.current_player_turn != color:
+                    raise ValueError(f"Invalid Game. player moved into check: {color}")
+                elif is_check:
+                    self.checks[color] = True
+                else:
+                    self.checks[color] = False
+
+    def load_fen(self, fen):
+        self._load_fen(fen)
+        self._initial_checks()
+
+    def _load_fen(self, fen: str):
         """
         Setup board to fen
         8Lines of board layout
@@ -407,19 +423,19 @@ class ClassicGame(GameModeBase):
                 if 65 <= order <= 90:
                     fig = self.get_proper_figure(char, 0)
                     self.board.add_figure((x, y), fig)
-                    x += 1
                 elif 97 <= order <= 122:
                     fig = self.get_proper_figure(char, 1)
                     self.board.add_figure((x, y), fig)
-                    x += 1
                 else:
                     skip = int(char)
                     x += skip
                     if x > 7:
                         break
                     continue
-                if isinstance(fig, King):
+                if isinstance(fig, (King,)):
                     self.kings[fig.color][x, y] = fig
+                    print(f"Adding king: {fig.color}, to ({x},{y})")
+                x += 1
 
         self.current_player_turn = 0 if cur_player == "w" else 1
 
@@ -489,8 +505,8 @@ class ClassicGame(GameModeBase):
             return True
         return False
 
-    def are_rules_ok(self, color):
-        return not self._is_player_checked(color)
+    # def extra_move_rules(self, moving_color):
+    #     return not self._is_player_checked(moving_color)
 
     def _is_player_checked(self, color):
         kgs = self.kings[color]
@@ -545,5 +561,5 @@ if __name__ == "__main__":
     g.load_fen("r3r1k1/pppb1ppp/5n2/3P4/2P5/2NB1P2/PP1q3P/2KR1R2 w - - 0 15")
     g.board.print_table()
 
-    g.make_move(g.strings_to_ints("a2", "a3"))
+    g.make_move(g.strings_to_ints("a2", "a4"))
     g.board.print_table()
