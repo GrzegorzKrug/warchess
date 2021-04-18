@@ -228,8 +228,8 @@ def test_10_castle_w_move():
 
     g.make_move(g.strings_to_ints("e1", "g1"))
 
-    f1 = g.strings_to_ints("g1")[0]
-    f2 = g.strings_to_ints("f1")[0]
+    f1 = g.strings_to_ints("g1")
+    f2 = g.strings_to_ints("f1")
 
     assert isinstance(g.board.get(f1), King)
     assert isinstance(g.board.get(f2), Rook)
@@ -242,8 +242,8 @@ def test_10_castle_w_move2():
 
     g.make_move(g.strings_to_ints("e1", "c1"))
 
-    f1 = g.strings_to_ints("c1")[0]
-    f2 = g.strings_to_ints("d1")[0]
+    f1 = g.strings_to_ints("c1")
+    f2 = g.strings_to_ints("d1")
 
     assert isinstance(g.board.get(f1), King)
     assert isinstance(g.board.get(f2), Rook)
@@ -377,24 +377,24 @@ def test_14_move_and_check():
     assert not g._is_move_valid(*g.strings_to_ints("c2", "b4")), "Move is illegal"
 
 
-def test_15_under_threat():
+def test_15_under_threat_any():
     g = ClassicGame()
     g.load_fen("r3kbnr/pp2pppp/2ppq3/2n5/2P5/BPNQPN2/P2P1PPP/R3K2R w KQkq - 1 12")
     g.board.print_table()
 
-    assert g.under_threat(*g.strings_to_ints("c4"))
-    assert g.under_threat(*g.strings_to_ints("e3"))
-    assert g.under_threat(*g.strings_to_ints("d6"))
-    assert g.under_threat(*g.strings_to_ints("c5"))
+    assert g.under_threat(g.strings_to_ints("c4"))
+    assert g.under_threat(g.strings_to_ints("e3"))
+    assert g.under_threat(g.strings_to_ints("d6"))
+    assert g.under_threat(g.strings_to_ints("c5"))
 
-    assert not g.under_threat(*g.strings_to_ints("e1"))
-    assert not g.under_threat(*g.strings_to_ints("h1"))
-    assert not g.under_threat(*g.strings_to_ints("a1"))
-    assert not g.under_threat(*g.strings_to_ints("g8"))
-    assert not g.under_threat(*g.strings_to_ints("g8"))
+    assert not g.under_threat(g.strings_to_ints("e1")), "E1 is safe"
+    assert not g.under_threat(g.strings_to_ints("h1")), "H1 is safe"
+    assert not g.under_threat(g.strings_to_ints("a1")), "A1 is safe"
+    assert not g.under_threat(g.strings_to_ints("g8")), "G8 is safe"
+    assert not g.under_threat(g.strings_to_ints("h8")), "H8 is safe"
 
 
-def test_15_under_threat_2():
+def test_15_under_threat_any_2():
     g = ClassicGame()
     g.load_fen("r3r1k1/pppb1ppp/5n2/3P4/2P5/2NB1P2/PP1q3P/2KR1R2 w - - 0 15")
     g.board.print_table()
@@ -406,7 +406,80 @@ def test_15_under_threat_2():
 
     ]
     for mv in moves:
-        assert g.under_threat(*g.strings_to_ints(mv), defending=1), f"White is not attacking {mv}"
+        assert g.under_threat(g.strings_to_ints(mv), defending=1), f"White is not attacking {mv}"
+
+
+def test_15_under_threat_all():
+    g = ClassicGame()
+    g.load_fen("rnbQ4/pppp1pkp/8/1Q4n1/5Q2/PPP5/PPPPB2P/K1R5 w - - 0 1")
+    g.board.print_table()
+    valid_white = [
+            ("d5", "e5", "f5", "g5"),
+            ("c5", "c4", "d5", "e5", "f5", "g5"),
+            ("a1", "b1", "d1", "e1", "f1"),
+            ("f1", "e8", "f8", "g8", "h8"),
+            # (),
+            # (),
+            # (),
+            # (),
+            # (),
+            # (),
+            # (),
+            # (),
+            # (),
+            # (),
+            # (),
+            # (),
+            # (),
+            # (),
+            # (),
+            # (),
+    ]
+    for str_field in valid_white:
+        fields = g.strings_to_ints(*str_field)
+        assert g.under_threat(fields=fields, defending=1, mode='all_fields'), \
+            f"White covers: {str_field}"
+
+    invalid_white = [
+            ("a1", "b1", "c1", "d1", "e1", "f1"),
+            ("b8", "a8"),
+            ("b8", "a5", "a6"),
+            ("g7", "f7"),
+            ("h3", "h4"),
+            ("g2", "h2", "h1"),
+            # (),
+            # (),
+            # (),
+            # (),
+            # (),
+    ]
+    for str_field in invalid_white:
+        fields = g.strings_to_ints(*str_field)
+        assert not g.under_threat(fields=fields, defending=1, mode='all_fields'), \
+            f"White can't cover all fields: {str_field}"
+
+
+def test_15_king_cover_and_threats():
+    g = ClassicGame()
+    g.load_fen("rkr5/1rr5/8/8/8/1r2P3/3K4/2BB4 w q - 0 1")
+    g.board.print_table()
+    valid_threats = [
+            "d1",
+            "e2",
+            "e1",
+            "d3",
+            "d2",
+            "b2",
+            "b3",
+    ]
+
+    for field_str in valid_threats:
+        field = g.strings_to_ints(field_str)
+        print(field_str, field)
+        assert g.under_threat(field=field, mode='any_field')
+        assert g.under_threat(field=field, mode='all_fields')
+        assert g.under_threat(field=field, mode='until')
+        assert g.under_threat(field=field, mode='any_field')
 
 
 def test_16_counter_checks():
@@ -570,8 +643,8 @@ def test_24_loading_check():
     raise NotImplementedError
 
 
-def test_25_():
-    pass
+def test_25():
+    raise NotImplementedError
 
 
 def test_26_():

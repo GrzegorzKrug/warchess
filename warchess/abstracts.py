@@ -169,6 +169,10 @@ class BoardBase(ABC):
     def columns(self):
         return "ABCDEFGH"
 
+    @property
+    def rows(self):
+        return "12345678"
+
     def add_figure(self, field, fig):
         if field in self.figs_on_board:
             raise ValueError(f"There is figure on this {self.figs_on_board[field]}")
@@ -327,17 +331,22 @@ class GameModeBase(ABC):
 
         self.current_player_turn = (self.current_player_turn + 1) % self.players_num
 
-    def under_threat(self, field=None, fields=None, defending: int = None, mode='any'):
+    def under_threat(self, field=None, fields=None,
+                     defending: int = None, attacking=None,
+                     mode='any_field', minimal_attacks=1
+                     ):
         """
-        Check if
         Args:
             field:
             fields:
             defending: int: color or team that is defending position
             mode:
-                `any` return True if any field is under threat
-                `all` return True if all fields are under threat
-                'cover' return True if friendly is covering
+                @ 'any_fields' return True if any field is under threat
+                @ `all` return True if all fields are under threat
+                @ 'cover' return True if friendly is covering
+                @ 'until' return True if there is `>= minimal_attacks`
+                count_attackers
+
 
         Returns:
 
@@ -345,14 +354,14 @@ class GameModeBase(ABC):
         "Input checking"
         if field is None and fields is None:
             raise ValueError("Specify field or fields!")
-        elif mode not in ['any', 'all', 'cover']:
+        elif mode not in ['any_field', 'all_fields', 'cover', 'count_attackers']:
             raise ValueError(f"Specify correct mode, not: {mode}")
         elif field is not None and fields is not None:
             raise ValueError("Specify only field or fields, not both.")
 
-        if defending is None:
+        fig = self.board.get(field)
+        if defending is None and attacking is None:
             if field:
-                fig = self.board.get(field)
                 print(f"king?:{field} {fig}, {field}")
                 if fig is None:
                     raise ValueError("Field is empty, specify 'defending' team")
@@ -364,11 +373,7 @@ class GameModeBase(ABC):
         elif type(defending) is not int:
             raise ValueError(f"defending should be int, but got: {type(defending)}")
 
-        fig = self.board.get(field)
-        if fig is None and defending is None:
-            raise ValueError("Field is empty, specify `defending` color.")
-
-        elif defending is not None:
+        if defending is not None:
             defending_team = defending
 
         elif fig is not None:
@@ -376,42 +381,68 @@ class GameModeBase(ABC):
         else:
             raise ValueError("Else?")
 
+        del defending
+
         if field:
             positions_to_check = [field]
         else:
             positions_to_check = fields
 
-        if mode == "any":
-            for target in positions_to_check:
-                for pos, fig in self.board.figs_on_board.items():
-                    if fig.team != defending_team:
-                        attack_reach = self._move_checker.can_fig_reach_attack(self.board, fig, pos, target)
-                        if attack_reach:
-                            return True
-
-        elif mode == "cover":
-            for target in positions_to_check:
-                for pos, fig in self.board.figs_on_board.items():
-                    if fig.team == defending_team:
-                        attack_reach = self._move_checker.can_fig_reach_attack(self.board, fig, pos, target)
-                        if attack_reach:
-                            return True
-
+        if mode == "cover":
+            mode = "any_field"
+            minimal_attacks = 1
+            attacking_color = defending_team
+            defending_team = None
         else:
+            attacking_color = None
+
+        if mode == "any_field":
             attacks_num = 0
+            pool = self.board.colors if attacking_color is not None else self.board.teams
+            for pool_id, team in pool.items():
+                if defending_team is not None and pool_id == defending_team:
+                    continue
+                if attacking_color is not None and pool_id != attacking_color:
+                    continue
+
+                for target in positions_to_check:
+                    reach = self._check_figures_reach(team, target, 1)
+                    if reach:
+                        attacks_num += 1
+                        if attacks_num >= minimal_attacks:
+                            return True
+
+        elif mode == "all_fields":
+            attacks_num = 0
+            minimal_attacks = len(positions_to_check)
             for target in positions_to_check:
-                for pos, fig in self.board.figs_on_board.items():
-                    if fig.team != defending_team:
-                        attack_reach = self._move_checker.can_fig_reach_attack(self.board, fig, pos, target)
-                        if attack_reach:
-                            attacks_num += 1
+                for team_id, team in self.board.teams.items():
+                    if team_id == defending_team:
+                        continue
+
+                    reach = self._check_figures_reach(team, target, 1)
+                    if reach:
+                        attacks_num += 1
+                        if attacks_num >= minimal_attacks:
+                            return True
+                        break
+
             warn("Temporary checking: num>len")
             if attacks_num == len(positions_to_check):
                 return True
             elif attacks_num > len(positions_to_check):
-                raise ValueError("How there is more checks?")
+                raise ValueError(f"How there is more attacks? {attacks_num}")
             else:
                 return False
+
+    def _check_figures_reach(self, fig_dict, target, min_n=1):
+        attacks = 0
+        for pos, fig in fig_dict.items():
+            attack_reach = self._move_checker.can_fig_reach_attack(self.board, fig, pos, target)
+            if attack_reach:
+                attacks += 1
+                if attacks >= min_n:
+                    return True
 
     def extra_move_rules(self, moving_color):
         """
@@ -445,17 +476,62 @@ class GameModeBase(ABC):
     def get_promotion_fig(self, color):
         return None
 
-    def strings_to_ints(self, *moves):
+    def strings_to_ints(self, *arrs):
         """
         Field postions notations example: "E1" -> (0, 4)
-        "Returns 2d tuple of given strings"
+        Translate any number of string into int tuples
         Args:
-            *moves:
+            *arrs:
 
         Returns:
+            tuple(moves)
 
         """
-        pass
+        if len(arrs) == 1:
+            return self._string_to_int(arrs[0])
+
+        out = []
+        for move in arrs:
+            x, y = self._string_to_int(move)
+            out.append((x, y))
+        print(f"Returning ints: {out}")
+        return out
+
+    def _string_to_int(self, move):
+        x, y = move.lower()
+        y = int(y) - 1
+        x = ord(x.lower()) - 97  # a=97,
+
+        if x < 0 or y < 0:
+            raise ValueError("Field index is under 0!")
+        if x >= self.board.width or y >= self.board.height:
+            raise ValueError(f"Field index is too high: x:{x} y:{y}")
+        return x, y
+
+    def ints_to_strings(self, *arrs):
+        if len(arrs) == 1:
+            x, y = arrs
+            return self._int_to_str(x, y)
+
+        elif type(arrs[0]) is tuple:
+            if type(arrs[0][0]) is int:
+                out = self._int_to_str(*arrs[0])
+            else:
+                out = [self._int_to_str(x, y) for x, y in arrs]
+            return out
+        else:
+            raise ValueError(f"Unrecognized type: {type(arrs[0])}")
+
+    def _int_to_str(self, x, y):
+        if x < 0 or y < 0:
+            raise ValueError("Field index is under 0!")
+        if x >= self.board.width or y >= self.board.height:
+            raise ValueError(f"Field index is too high: x:{x} y:{y}")
+
+        cols = self.board.columns
+        rows = self.board.rows
+        field_str = cols[x] + rows[y]
+        return field_str
 
     def new_game(self):
         self.__init__()
@@ -630,6 +706,7 @@ class FigMoveAnalyzer:
                 valid_moves.append(tmp_move)
         return valid_moves
 
+    @abstractmethod
     def _is_team_checked(self, color):
         pass
 
@@ -643,5 +720,6 @@ class FigMoveAnalyzer:
                     self.spc = spc
                     return True
 
+    @abstractmethod
     def _is_game_over(self):
         pass

@@ -530,30 +530,6 @@ class ClassicGame(GameModeBase):
         warn("static queen return")
         return Queen(color)
 
-    def strings_to_ints(self, *arrs):
-        """
-        Translate any number of string into int tuples
-        Args:
-            *arrs:
-
-        Returns:
-            tuple(moves)
-
-        """
-        out = []
-        if type(arrs) is str:
-            arrs = [arrs]
-
-        for move in arrs:
-            move = move.lower()
-            x, y = move
-            y = int(y) - 1
-            x = ord(x.lower()) - 97  # a=97,
-            out.append((x, y))
-        return out
-
-        # def make_move(self, f1, f2):
-        #     pass
 
 
 if __name__ == "__main__":
