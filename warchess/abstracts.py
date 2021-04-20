@@ -654,6 +654,8 @@ class FigMoveAnalyzer:
         return self._can_fig_reach_attack(*args)
 
     def _can_fig_reach_attack(self, fig, move, direction, dist, f1, f2):
+        if dist <= 0:
+            return False
         if dist == 1:
             if move in fig.attack_patterns:
                 return True

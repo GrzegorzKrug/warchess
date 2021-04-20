@@ -492,20 +492,20 @@ def threat_testing(g, white_valid=None, white_invalid=None, black_valid=None, bl
     if white_valid:
         for field_str in white_valid:
             field = g.strings_to_ints(field_str)
-            assert g.under_threat(field=field, attacking=0), f"Field is under white threat: {field_str}"
+            assert g.under_threat(field=field, attacking=0), f"White can threat: {field_str}"
         fields = g.strings_to_ints(white_valid)
         assert g.under_threat(fields=fields, attacking=0, mode='all_fields'), \
-            "All fields are valid attack"
+            "All fields are valid white threats"
 
     if white_invalid:
         for field_str in white_invalid:
             field = g.strings_to_ints(field_str)
             assert not g.under_threat(field=field, attacking=0), \
-                f"There is no attack to: {field_str}"
+                f"White can not threat: {field_str}"
 
         fields = g.strings_to_ints(white_invalid)
         assert not g.under_threat(fields=fields, attacking=0, mode='any_field'), \
-            "There is no field that can be attacked"
+            "White can not attack any fields!"
 
     if black_valid:
         for field_str in black_valid:
@@ -513,20 +513,20 @@ def threat_testing(g, white_valid=None, white_invalid=None, black_valid=None, bl
             assert g.under_threat(field=field, attacking=1), f"Field is under black threat: {field_str}"
         fields = g.strings_to_ints(black_valid)
         assert g.under_threat(fields=fields, attacking=1, mode='all_fields'), \
-            "All fields are valid attack"
+            "All fields are valid black threats."
 
     if black_invalid:
         for field_str in black_invalid:
             field = g.strings_to_ints(field_str)
-            assert not g.under_threat(field=field, attacking=1), f"There is no attack to: {field_str}"
+            assert not g.under_threat(field=field, attacking=1), f"Black can not threat: {field_str}"
         fields = g.strings_to_ints(black_invalid)
         assert not g.under_threat(fields=fields, attacking=1, mode='any_field'), \
-            "There is no field that can be attacked"
+            "Black can not threat any fields!"
 
 
 def test_15_threat_pawns():
     g = get_new_game("rnbqkb1r/pp2pppp/5n2/3p4/2PP4/2N5/PP3PPP/R1BQKBNR b KQkq - 2 5")
-    white_threating = [
+    white_threatening = [
             "b5",
             "c5",
             "d5",
@@ -540,7 +540,7 @@ def test_15_threat_pawns():
             "c3",
     ]
 
-    black_threating = [
+    black_threatening = [
             "c4",
             "e4",
             "a6",
@@ -553,7 +553,7 @@ def test_15_threat_pawns():
             "h6",
     ]
 
-    black_not_threating = [
+    black_not_threatening = [
             'd4',
             'e5',
             'd3',
@@ -561,12 +561,12 @@ def test_15_threat_pawns():
             'b5',
     ]
 
-    threat_testing(g, white_valid=white_threating, black_valid=black_threating, black_invalid=black_not_threating)
+    threat_testing(g, white_valid=white_threatening, black_valid=black_threatening, black_invalid=black_not_threatening)
 
 
 def test_15_threat_knights():
     g = get_new_game("3k4/5n2/5n2/2p5/8/2NN4/PPPPPPPP/4K3 b - - 2 5")
-    white_threating = [
+    white_threatening = [
             'a4',
             'b5',
             'c5',
@@ -576,31 +576,20 @@ def test_15_threat_knights():
             'b1',
             'c1',
             'd1',
-
     ]
-
-    white_not_threating = [
+    white_not_threatening = [
             'c4',
             'd4',
             'a1',
             'h1',
     ]
-    black_threating = [
-            'd7',
-            'd6',
-            'd5',
-            'e8',
-            'e5',
-            'e4',
-            'g4',
-            'g5',
-            'h5',
-            'h6',
-            'h7',
-            'h8',
-            'd8',
+    black_threatening = [
+            'd8', 'd7', 'd6', 'd5',
+            'e8', 'e5', 'e4',
+            'g4', 'g5',
+            'h5', 'h6', 'h7', 'h8',
     ]
-    black_not_threating = [
+    black_not_threatening = [
             'e6',
             'f8',
             'g7',
@@ -611,14 +600,14 @@ def test_15_threat_knights():
 
     threat_testing(
             g,
-            white_valid=white_threating, white_invalid=white_not_threating,
-            black_valid=black_threating, black_invalid=black_not_threating
+            white_valid=white_threatening, white_invalid=white_not_threatening,
+            black_valid=black_threatening, black_invalid=black_not_threatening,
     )
 
 
 def test_15_threat_rooks():
     g = get_new_game("3k4/r7/1r6/2p5/7R/2RRR3/PPPPPPPP/7K b - - 2 5")
-    white_threating = [
+    white_threatening = [
             'c2', 'c3', 'c4', 'c5',
             'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8',
             'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e8',
@@ -626,7 +615,7 @@ def test_15_threat_rooks():
             'h2', 'h3', 'h5', 'h6', 'h7', 'h8',
     ]
 
-    white_not_threating = [
+    white_not_threatening = [
             'c6', 'c7', 'c8',
             'b5', 'b6',
             'a5', 'a5', 'a7', 'a8',
@@ -635,7 +624,7 @@ def test_15_threat_rooks():
             'f5', 'f6', 'f7', 'f8',
             'g5', 'g6', 'g7', 'g8',
     ]
-    black_threating = [
+    black_threatening = [
             'a8', 'a6', 'a5', 'a4', 'a3', 'a2',
             'b8', 'b7', 'b5', 'b4', 'b3', 'b2',
             'b7', 'c7', 'd7', 'e7', 'f7', 'g7', 'h7',
@@ -647,7 +636,7 @@ def test_15_threat_rooks():
             'h6',
             # '',
     ]
-    black_not_threating = [
+    black_not_threatening = [
             'a1',
             'b1',
             'c1', 'c4',
@@ -664,8 +653,162 @@ def test_15_threat_rooks():
 
     threat_testing(
             g,
-            white_valid=white_threating, white_invalid=white_not_threating,
-            black_valid=black_threating, black_invalid=black_not_threating
+            white_valid=white_threatening, white_invalid=white_not_threatening,
+            black_valid=black_threatening, black_invalid=black_not_threatening
+    )
+
+
+def test_15_threats_bishop():
+    g = get_new_game("3k3b/b3b3/8/2r2p2/8/8/PBBPPPPP/7K b - - 0 1")
+    white_threatening = [
+            'b3', 'c3', 'd4', 'e5', 'f6', 'g7', 'h8',
+            'b3', 'a4', 'd3', 'e4', 'f5',
+            'a1', 'b1', 'c1', 'd1',
+    ]
+    white_not_threatening = [
+            'b4', 'c4',
+            'c5', 'b5',
+            'e1',
+            'g6', 'h7',
+    ]
+
+    black_threatening = [
+            'b6', 'c5', 'b8',
+            'g7', 'f6', 'e5', 'd4', 'c3', 'b2',
+            'd6', 'f8', 'g5', 'h4',
+            'g4',
+    ]
+    black_not_threatening = [
+            'a6', 'b7', 'a8',
+            'e6', 'f7',
+            'g8',
+            'h7',
+            'b4',
+            'f4',
+            'e3',
+            'a1', 'b1', 'c1', 'd1', 'e1', 'f1', 'g1', 'h1',
+    ]
+
+    threat_testing(
+            g,
+            white_valid=white_threatening, white_invalid=white_not_threatening,
+            black_valid=black_threatening, black_invalid=black_not_threatening
+    )
+
+
+def test_15_threats_rooks():
+    g = get_new_game("3k4/r5p1/1r6/4R3/6RK/4R3/1P4N1/8 b - - 0 1")
+    white_threatening = [
+            'a3', 'b3', 'c3', 'd3', 'e5', 'e4', 'e3', 'e2', 'e1',
+            'g2', 'g3',
+            'f4', 'e4', 'd4', 'c4', 'b4', 'a4',
+            'e6', 'e7', 'e8',
+            'f5', 'g5', 'h5',
+            'g5', 'g6', 'g7',
+            'd5', 'c5', 'b5', 'a5',
+    ]
+    white_not_threatening = [
+            'g8',
+            'd2',
+            'd6',
+            'f6',
+            'f2',
+            'g1',
+    ]
+
+    black_threatening = [
+            'a8', 'a6', 'a5', 'a4', 'a3', 'a2', 'a1',
+            'b8', 'b7', 'b5', 'b4', 'b3', 'b2',
+            'c7', 'd7', 'e7', 'f7', 'g7',
+            'c6', 'd6', 'e6', 'f6', 'g6', 'h6',
+    ]
+    black_not_threatening = [
+            'h7',
+            'c5', 'd4', 'e3', 'f2', 'g1',
+            'c1', 'c2',
+            'b1',
+            # '',
+    ]
+
+    threat_testing(
+            g,
+            white_valid=white_threatening, white_invalid=white_not_threatening,
+            black_valid=black_threatening, black_invalid=black_not_threatening
+    )
+
+
+def test_15_threats_queens():
+    g = get_new_game("3k4/q5p1/1q6/4Q3/6QK/4Q3/1P6/8 b - - 0 1")
+    white_threatening = [
+            'a3', 'b3', 'c3', 'd3', 'e5', 'e4', 'e3', 'e2', 'e1',
+            'g2', 'g3',
+            'f4', 'e4', 'd4', 'c4', 'b4', 'a4',
+            'e6', 'e7', 'e8',
+            'f5', 'g5', 'h5',
+            'g5', 'g6', 'g7',
+            'd5', 'c5', 'b5', 'a5',
+    ]
+    white_not_threatening = [
+            'g8', 'h8',
+            'a1', 'b1', 'h1',
+    ]
+
+    black_threatening = [
+            'a8', 'a6', 'a5', 'a4', 'a3', 'a2', 'a1',
+            'b8', 'b7', 'b5', 'b4', 'b3', 'b2',
+            'c7', 'd7', 'e7', 'f7', 'g7',
+            'c6', 'd6', 'e6', 'f6', 'g6', 'h6',
+    ]
+    black_not_threatening = [
+            'h7',
+            'f2', 'g1',
+            'c1', 'c2',
+            'b1',
+            # '',
+    ]
+
+    threat_testing(
+            g,
+            white_valid=white_threatening, white_invalid=white_not_threatening,
+            black_valid=black_threatening, black_invalid=black_not_threatening
+    )
+
+
+def test_15_threats_kings():
+    g = get_new_game("3k4/8/k7/1p3P2/6K1/8/4K3/8 b - - 0 1")
+    white_threatening = [
+            'd1', 'd2', 'd3', 'e1', 'e3', 'f1', 'f2', 'f3',
+            'f4', 'f5', 'g3', 'g5', 'h3', 'h4', 'h5',
+    ]
+    white_not_threatening = [
+            'g1',
+            'g2',
+            'h1',
+            'h2',
+            'e2',
+            'g4',
+            'e4',
+    ]
+    black_threatening = [
+            'a5', 'a7', 'b5', 'b6', 'b7',
+            'c7', 'c8', 'd7', 'e7', 'e8',
+    ]
+    black_not_threatening = [
+            'a8',
+            'b8',
+            'b1',
+            'b2',
+            'b3',
+            'e1',
+            'f7', 'f8',
+            'g7', 'g8',
+            'h7', 'h8',
+    ]
+
+    threat_testing(
+            g,
+            white_valid=white_threatening, white_invalid=white_not_threatening,
+            black_valid=black_threatening, black_invalid=black_not_threatening
     )
 
 
