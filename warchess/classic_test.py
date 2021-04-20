@@ -459,7 +459,7 @@ def test_15_under_threat_all():
             f"White can't cover all fields: {str_field}"
 
 
-def test_15_king_cover_and_threats():
+def test_15_threats():
     g = ClassicGame()
     g.load_fen("rkr5/1rr5/8/8/8/1r2P3/3K4/2BB4 w q - 0 1")
     g.board.print_table()
@@ -476,10 +476,197 @@ def test_15_king_cover_and_threats():
     for field_str in valid_threats:
         field = g.strings_to_ints(field_str)
         print(field_str, field)
-        assert g.under_threat(field=field, mode='any_field')
-        assert g.under_threat(field=field, mode='all_fields')
-        assert g.under_threat(field=field, mode='until')
-        assert g.under_threat(field=field, mode='any_field')
+        assert g.under_threat(field=field, attacking=0, mode='any_field'), f"Pos {field_str} is under attack!"
+        assert g.under_threat(field=field, attacking=0, mode='all_fields'), f"Pos {field_str} is under attack!"
+        assert g.under_threat(field=field, defending=0, mode='cover'), f"Pos {field_str} is under attack!"
+
+
+def get_new_game(fen):
+    g = ClassicGame()
+    g.load_fen(fen)
+    g.board.print_table()
+    return g
+
+
+def threat_testing(g, white_valid=None, white_invalid=None, black_valid=None, black_invalid=None):
+    if white_valid:
+        for field_str in white_valid:
+            field = g.strings_to_ints(field_str)
+            assert g.under_threat(field=field, attacking=0), f"Field is under white threat: {field_str}"
+        fields = g.strings_to_ints(white_valid)
+        assert g.under_threat(fields=fields, attacking=0, mode='all_fields'), \
+            "All fields are valid attack"
+
+    if white_invalid:
+        for field_str in white_invalid:
+            field = g.strings_to_ints(field_str)
+            assert not g.under_threat(field=field, attacking=0), \
+                f"There is no attack to: {field_str}"
+
+        fields = g.strings_to_ints(white_invalid)
+        assert not g.under_threat(fields=fields, attacking=0, mode='any_field'), \
+            "There is no field that can be attacked"
+
+    if black_valid:
+        for field_str in black_valid:
+            field = g.strings_to_ints(field_str)
+            assert g.under_threat(field=field, attacking=1), f"Field is under black threat: {field_str}"
+        fields = g.strings_to_ints(black_valid)
+        assert g.under_threat(fields=fields, attacking=1, mode='all_fields'), \
+            "All fields are valid attack"
+
+    if black_invalid:
+        for field_str in black_invalid:
+            field = g.strings_to_ints(field_str)
+            assert not g.under_threat(field=field, attacking=1), f"There is no attack to: {field_str}"
+        fields = g.strings_to_ints(black_invalid)
+        assert not g.under_threat(fields=fields, attacking=1, mode='any_field'), \
+            "There is no field that can be attacked"
+
+
+def test_15_threat_pawns():
+    g = get_new_game("rnbqkb1r/pp2pppp/5n2/3p4/2PP4/2N5/PP3PPP/R1BQKBNR b KQkq - 2 5")
+    white_threating = [
+            "b5",
+            "c5",
+            "d5",
+            "e5",
+            "e3",
+            "f3",
+            "g3",
+            "h3",
+            "a3",
+            "b3",
+            "c3",
+    ]
+
+    black_threating = [
+            "c4",
+            "e4",
+            "a6",
+            "b6",
+            "c6",
+            "d6",
+            "e6",
+            "f6",
+            "g6",
+            "h6",
+    ]
+
+    black_not_threating = [
+            'd4',
+            'e5',
+            'd3',
+            'b3',
+            'b5',
+    ]
+
+    threat_testing(g, white_valid=white_threating, black_valid=black_threating, black_invalid=black_not_threating)
+
+
+def test_15_threat_knights():
+    g = get_new_game("3k4/5n2/5n2/2p5/8/2NN4/PPPPPPPP/4K3 b - - 2 5")
+    white_threating = [
+            'a4',
+            'b5',
+            'c5',
+            'd5',
+            'e5',
+            'f4',
+            'b1',
+            'c1',
+            'd1',
+
+    ]
+
+    white_not_threating = [
+            'c4',
+            'd4',
+            'a1',
+            'h1',
+    ]
+    black_threating = [
+            'd7',
+            'd6',
+            'd5',
+            'e8',
+            'e5',
+            'e4',
+            'g4',
+            'g5',
+            'h5',
+            'h6',
+            'h7',
+            'h8',
+            'd8',
+    ]
+    black_not_threating = [
+            'e6',
+            'f8',
+            'g7',
+            'g6',
+            'f5',
+            'f4',
+    ]
+
+    threat_testing(
+            g,
+            white_valid=white_threating, white_invalid=white_not_threating,
+            black_valid=black_threating, black_invalid=black_not_threating
+    )
+
+
+def test_15_threat_rooks():
+    g = get_new_game("3k4/r7/1r6/2p5/7R/2RRR3/PPPPPPPP/7K b - - 2 5")
+    white_threating = [
+            'c2', 'c3', 'c4', 'c5',
+            'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8',
+            'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e8',
+            'a4', 'b4', 'f4', 'g4',
+            'h2', 'h3', 'h5', 'h6', 'h7', 'h8',
+    ]
+
+    white_not_threating = [
+            'c6', 'c7', 'c8',
+            'b5', 'b6',
+            'a5', 'a5', 'a7', 'a8',
+            'a1', 'a2',
+            'b1', 'b2',
+            'f5', 'f6', 'f7', 'f8',
+            'g5', 'g6', 'g7', 'g8',
+    ]
+    black_threating = [
+            'a8', 'a6', 'a5', 'a4', 'a3', 'a2',
+            'b8', 'b7', 'b5', 'b4', 'b3', 'b2',
+            'b7', 'c7', 'd7', 'e7', 'f7', 'g7', 'h7',
+            'c6',
+            'd6',
+            'e6',
+            'f6',
+            'g6',
+            'h6',
+            # '',
+    ]
+    black_not_threating = [
+            'a1',
+            'b1',
+            'c1', 'c4',
+            'd5',
+            'e5',
+            'f5',
+            'g5',
+            'h5',
+            'f8',
+            'g8',
+            'h8',
+            # '',
+    ]
+
+    threat_testing(
+            g,
+            white_valid=white_threating, white_invalid=white_not_threating,
+            black_valid=black_threating, black_invalid=black_not_threating
+    )
 
 
 def test_16_counter_checks():

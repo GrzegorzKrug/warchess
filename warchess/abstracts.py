@@ -351,6 +351,9 @@ class GameModeBase(ABC):
         Returns:
 
         """
+        defending_team = None
+        attacking_color = None
+
         "Input checking"
         if field is None and fields is None:
             raise ValueError("Specify field or fields!")
@@ -362,39 +365,35 @@ class GameModeBase(ABC):
         fig = self.board.get(field)
         if defending is None and attacking is None:
             if field:
-                print(f"king?:{field} {fig}, {field}")
                 if fig is None:
                     raise ValueError("Field is empty, specify 'defending' team")
                 else:
-                    defending = fig.color
+                    defending_team = fig.color
             else:
                 raise ValueError("Specify 'defending' team when using 'fields'")
+
+        elif type(attacking) is int:
+            defending_team = None
+            attacking_color = attacking
 
         elif type(defending) is not int:
             raise ValueError(f"defending should be int, but got: {type(defending)}")
 
-        if defending is not None:
+        elif defending is not None:
             defending_team = defending
+            attacking_color = None
 
-        elif fig is not None:
-            defending_team = fig.team
-        else:
-            raise ValueError("Else?")
-
-        del defending
+        if mode == "cover":
+            "Change cover to attacking 'anyfield'"
+            mode = "any_field"
+            minimal_attacks = 1
+            attacking_color = defending_team
+            defending_team = None
 
         if field:
             positions_to_check = [field]
         else:
             positions_to_check = fields
-
-        if mode == "cover":
-            mode = "any_field"
-            minimal_attacks = 1
-            attacking_color = defending_team
-            defending_team = None
-        else:
-            attacking_color = None
 
         if mode == "any_field":
             attacks_num = 0
@@ -488,13 +487,15 @@ class GameModeBase(ABC):
 
         """
         if len(arrs) == 1:
-            return self._string_to_int(arrs[0])
+            if isinstance(arrs[0], (List, Tuple)):
+                arrs = arrs[0]
+            else:
+                return self._string_to_int(arrs[0])
 
         out = []
         for move in arrs:
             x, y = self._string_to_int(move)
             out.append((x, y))
-        print(f"Returning ints: {out}")
         return out
 
     def _string_to_int(self, move):
