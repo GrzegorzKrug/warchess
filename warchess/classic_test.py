@@ -775,7 +775,7 @@ def test_15_threats_queens():
 
 
 def test_15_threats_kings():
-    g = get_new_game("3k4/8/k7/1p3P2/6K1/8/4K3/8 b - - 0 1")
+    g = get_new_game("3k4/8/k7/1p3P2/6K1/2k5/4K3/8 b - - 0 1")
     white_threatening = [
             'd1', 'd2', 'd3', 'e1', 'e3', 'f1', 'f2', 'f3',
             'f4', 'f5', 'g3', 'g5', 'h3', 'h4', 'h5',
@@ -792,13 +792,12 @@ def test_15_threats_kings():
     black_threatening = [
             'a5', 'a7', 'b5', 'b6', 'b7',
             'c7', 'c8', 'd7', 'e7', 'e8',
+            'b2', 'b3', 'b4', 'c2', 'c4', 'd2', 'd3', 'd4',
     ]
     black_not_threatening = [
             'a8',
             'b8',
             'b1',
-            'b2',
-            'b3',
             'e1',
             'f7', 'f8',
             'g7', 'g8',
