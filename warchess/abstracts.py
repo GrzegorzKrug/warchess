@@ -215,7 +215,7 @@ class BoardBase(ABC):
             ks = ks[0]
             return self._get(ks)
         elif len(ks) == 2:
-            return self._get(tuple(*ks))
+            return self._get(tuple(ks))
         else:
             raise ValueError("Invalid key to get board")
 
