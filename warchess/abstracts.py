@@ -549,7 +549,7 @@ class GameModeBase(ABC):
 
 class FigMoveAnalyzer:
     def __init__(self):
-        self.game = None
+        self.game_mode = None
         self.board = None
 
     def check(self, game: GameModeBase, board: BoardBase, f1: move_tuple, f2: move_tuple):
@@ -579,6 +579,8 @@ class FigMoveAnalyzer:
         move_reach, attack_reach = self._can_fig_reach(fig, f1, f2)
         can_move = self._can_fig_move(fig, target)
         can_attack = self._can_fig_attack(fig, target)
+        is_check_after_move = self._is_team_checked(fig.team, f1, f2)
+        # can_attack_ghost = self._can_fig_attack(fig, target, ignore=target)
         # print(f"mv reach:{move_reach}, attk reach:{attack_reach}")
 
         if target is None and can_move and move_reach:
@@ -590,7 +592,7 @@ class FigMoveAnalyzer:
         return False
 
     @staticmethod
-    def _can_fig_attack(fig: FigureBase, target: FigureBase):
+    def _can_fig_attack(fig: FigureBase, target: FigureBase, ignore=None):
         if target is None:
             return False
         if fig.team != target.team:
@@ -710,7 +712,8 @@ class FigMoveAnalyzer:
         return valid_moves
 
     @abstractmethod
-    def _is_team_checked(self, color):
+    def _is_team_checked(self, team, f1, f2):
+
         pass
 
     def _can_fig_special(self, fig: FigureBase, f1, f2):
