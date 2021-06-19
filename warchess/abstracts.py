@@ -5,6 +5,8 @@ from copy import deepcopy
 from typing import Any, Tuple, List, AnyStr, Union, Iterable
 from warnings import warn
 
+# from classes import King
+
 import numpy as np
 
 # pattern_tuple = namedtuple("P", field_names=["X", "Y"])
@@ -184,7 +186,15 @@ class BoardBase(ABC):
             self.teams[team][field] = fig
 
     def change_fig(self, field, fig):
-        """Replacement"""
+        """
+        Put this fig on that field
+        Args:
+            field:
+            fig:
+
+        Returns:
+
+        """
         color = fig.color
         team = fig.team
         self.figs_on_board[field] = fig
@@ -192,6 +202,15 @@ class BoardBase(ABC):
         self.teams[team][field] = fig
 
     def remove_figure(self, pos: Tuple):
+        """
+        Remove fig from pos.
+        Args:
+            pos:
+
+        Returns:
+            removed fig
+
+        """
         fig = self.figs_on_board[pos]
         color = fig.color
         team = fig.team
@@ -211,6 +230,14 @@ class BoardBase(ABC):
         fig.move()
 
     def get(self, *ks):
+        """
+        Get Figure from board
+        Args:
+            *ks:
+
+        Returns:
+
+        """
         if len(ks) == 1:
             ks = ks[0]
             return self._get(ks)
@@ -307,8 +334,17 @@ class GameModeBase(ABC):
         pass
 
     def _is_move_valid(self, f1, f2):
+        """
+        Use checker object to check if move was valid.
+        Args:
+            f1:
+            f2:
+
+        Returns:
+
+        """
         check = self._move_checker.check(self, self.board, f1, f2)
-        return check or self._move_checker.can_special
+        return check or self._move_checker.ret['can_special']
 
     def _resolve_action(self, f1, f2):
         is_ok = self._move_checker.check(self, self.board, f1, f2)
@@ -316,8 +352,8 @@ class GameModeBase(ABC):
         if is_ok:
             self.board.move_figure(f1, f2)
             self._post_move_actions(f2)
-        elif self._move_checker.can_special:
-            spc = self._move_checker.spc
+        elif self._move_checker.ret['can_special']:
+            spc = self._move_checker.ret['spec']
             spc.apply(self, self.board, f1, f2)
             self._post_special_actions(f2)
         else:
@@ -552,42 +588,54 @@ class FigMoveAnalyzer:
         self.game_mode = None
         self.board = None
 
-    def check(self, game: GameModeBase, board: BoardBase, f1: move_tuple, f2: move_tuple):
+    def check(
+            self, game: GameModeBase, board: BoardBase,
+            f1: move_tuple, f2: move_tuple, ignore_check=False,
+    ):
         self.game = game
         self.board = board
-        # self.move_reach = False
-        # self.attack_reach = False
-        # self.f1 = f1
-        # self.f2 = f2
-        self.can_special = False
-        self.spc = None
+        # self.can_special = False
+        # self.spc = None
+        self.ret = {
+                'valid': None, 'spec': None, 'is_self_check_after': None,
+                'can_special': False,
+        }
 
-        return self._is_move_valid(f1, f2)
+        return self._is_move_valid(f1, f2, ignore_check=ignore_check)
 
-    def _is_move_valid(self, f1, f2):
+    def _is_move_valid(self, f1, f2, ignore_check=False):
         fig = self.board.get(f1)
         target = self.board.get(f2)
 
         "Check if figure is here"
         if fig is None:
+            self.ret['valid'] = False
             return False
 
         "Wrong figure, Turn for other player"
         if self.game.current_player_turn != fig.color:
+            self.ret['valid'] = False
             return False
 
         move_reach, attack_reach = self._can_fig_reach(fig, f1, f2)
         can_move = self._can_fig_move(fig, target)
         can_attack = self._can_fig_attack(fig, target)
-        is_check_after_move = self._is_team_checked(fig.team, f1, f2)
-        # can_attack_ghost = self._can_fig_attack(fig, target, ignore=target)
-        # print(f"mv reach:{move_reach}, attk reach:{attack_reach}")
+
+        if not ignore_check:
+            is_check_after_move = self._check_consequences(fig.team, f1, f2)
+
+            if is_check_after_move:
+                self.ret['check_after_move'] = True
+                return False
 
         if target is None and can_move and move_reach:
+            self.ret['valid'] = True
             return True
         if target is not None and can_attack and attack_reach:
+            self.ret['valid'] = True
             return True
 
+        "If no move or no attack, check specials"
         self._can_fig_special(fig, f1, f2)
         return False
 
@@ -712,18 +760,35 @@ class FigMoveAnalyzer:
         return valid_moves
 
     @abstractmethod
-    def _is_team_checked(self, team, f1, f2):
+    def _check_consequences(self, team, f1, f2):
+        """
+        Function analyze if team will be checked after fig move f1 -> f2
+        Args:
+            team:
+            f1:
+            f2:
 
-        pass
+        Returns:
+
+        """
+
+        # self.game.kings
+        # print(self.board.figs_on_board)
+        kings = [
+                (pos, fig) for pos, fig in self.board.figs_on_board.items() if fig.name == "King" and fig.color == team
+        ]
+
+        print(team, kings)
+
+        return None
 
     def _can_fig_special(self, fig: FigureBase, f1, f2):
-
         if fig.specials is not None:
             for spc in fig.specials:
                 valid = spc.is_valid(self.game, self.board, f1, f2)
                 if valid:
-                    self.can_special = True
-                    self.spc = spc
+                    self.ret['spec'] = spc
+                    self.ret['can_special'] = True
                     return True
 
     @abstractmethod
