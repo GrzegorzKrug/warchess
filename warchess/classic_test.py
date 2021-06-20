@@ -811,7 +811,7 @@ def test_15_threats_kings():
     )
 
 
-def test_16_counter_checks():
+def test_16_move_out_of_check1():
     g = ClassicGame()
     g.load_fen("r3r1k1/pppb1ppp/5n2/3P4/2P5/2NB1P2/PP1q3P/2KR1R2 w - - 0 15")
     g.board.print_table()
@@ -822,7 +822,7 @@ def test_16_counter_checks():
             ('c1', 'd2'),
     ]
     for pair in moves:
-        assert g._is_move_valid(*g.strings_to_ints(*pair)), "This is not white valid move"
+        assert g._is_move_valid(*g.strings_to_ints(*pair)), f"This is valid move, {pair}"
 
     moves = [
             ('f1', 'f2'),
@@ -842,6 +842,24 @@ def test_16_counter_checks():
     ]
     for pair in moves:
         assert not g._is_move_valid(*g.strings_to_ints(*pair)), f"This move is invalid for white: {pair}"
+
+
+def test_16_move_out_of_check2():
+    g = ClassicGame()
+    g.load_fen('r3r1k1/pppb1ppp/5n2/3P4/2P5/2NBqP2/PP1K3P/3R1R2 w - - 6 18')
+    g.board.print_table()
+
+    moves = [
+            ('d2', 'c2'),
+    ]
+    for pair in moves:
+        assert g._is_move_valid(*g.strings_to_ints(*pair)), f"This is valid move, {pair}"
+
+    moves = [
+            ('d2', 'c1'),
+    ]
+    for pair in moves:
+        assert not g._is_move_valid(*g.strings_to_ints(*pair)), f"This is not valid move, {pair}"
 
 
 def test_17_loading_fen_color_check():

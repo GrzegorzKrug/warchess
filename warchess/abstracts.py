@@ -321,6 +321,7 @@ class GameModeBase(ABC):
         else:
             f1, f2 = args[0]
 
+        print(type(f1), type(f2))
         self._make_move(f1, f2)
 
     def _make_move(self, f1, f2):
@@ -520,6 +521,8 @@ class FigMoveAnalyzer:
                 'valid': None, 'spec': None, 'is_self_check_after': None,
                 'can_special': False,
         }
+        assert isinstance(f1, (move_tuple, tuple)), "F1 has to be move_tuple"
+        assert isinstance(f2, (move_tuple, tuple)), "F2 has to be move_tuple"
 
         return self._is_move_valid(f1, f2, ignore_check=ignore_check)
 
@@ -667,9 +670,11 @@ class FigMoveAnalyzer:
         valid_moves = []
         if ignore:
             ig_x, ig_y = ignore
-            bl_x, bl_y = block
         else:
             ig_x, ig_y = None, None
+        if block:
+            bl_x, bl_y = block
+        else:
             bl_x, bl_y = None, None
 
         its = 0
@@ -849,9 +854,15 @@ class FigMoveAnalyzer:
                 (pos, fig) for pos, fig in self.board.figs_on_board.items() if fig.name == "King" and fig.color == team
         ]
 
+        th = False
         for p, k in kings:
-            th = self.under_threat(field=p, ignore=f1, block=f2)
-            # print(f"Move: {self.game.ints_to_strings(f1, f2)}, {th}")
+            if p == f1:
+                print("Moving king")
+                th = self.under_threat(field=f2, defending=k.team, ignore=f1)
+            else:
+                th = self.under_threat(field=p, ignore=f1, block=f2)
+            # th = self.under_threat(field=p, ignore=f1, block=f2)
+
             if th:
                 break
 
