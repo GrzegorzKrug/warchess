@@ -371,6 +371,7 @@ class ClassicGame(GameModeBase):
         super().__init__()
         self.board = Board(8, 8)
         self.checks = {num: False for num in range(self.players_num)}
+        self.init_analyzer()
 
     def new_game(self):
         self.load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -529,7 +530,6 @@ class ClassicGame(GameModeBase):
     def get_promotion_fig(self, color):
         warn("static queen return")
         return Queen(color)
-
 
 
 if __name__ == "__main__":

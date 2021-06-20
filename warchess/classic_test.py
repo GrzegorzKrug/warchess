@@ -82,7 +82,7 @@ def test_6_black_moves():
     g.board.print_table()
 
     assert g._is_move_valid(*g.strings_to_ints("c6", "b5"))
-    assert g._is_move_valid(*g.strings_to_ints("c6", "c5"))
+    assert not g._is_move_valid(*g.strings_to_ints("c6", "c5"))  # Bishop pin
     assert g._is_move_valid(*g.strings_to_ints("a5", "a4"))
     assert g._is_move_valid(*g.strings_to_ints("a8", "a7"))
     assert g._is_move_valid(*g.strings_to_ints("a8", "a6"))

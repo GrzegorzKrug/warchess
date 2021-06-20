@@ -300,8 +300,11 @@ class GameModeBase(ABC):
         self.current_player_turn = 0
         self.last_hit = 0  # Moves from last hit
         self.move_count = 0  # Move counter
-        self._move_checker = FigMoveAnalyzer()
         self.kings = {num: dict() for num in range(self.players_num)}
+        self.init_analyzer()
+
+    def init_analyzer(self):
+        self._move_checker = FigMoveAnalyzer(self, self.board)
 
     def make_move(self, *args):
         """
@@ -343,11 +346,11 @@ class GameModeBase(ABC):
         Returns:
 
         """
-        check = self._move_checker.check(self, self.board, f1, f2)
+        check = self._move_checker.check(f1, f2)
         return check or self._move_checker.ret['can_special']
 
     def _resolve_action(self, f1, f2):
-        is_ok = self._move_checker.check(self, self.board, f1, f2)
+        is_ok = self._move_checker.check(f1, f2)
         tmp_brd = deepcopy(self.board)
         if is_ok:
             self.board.move_figure(f1, f2)
@@ -382,102 +385,14 @@ class GameModeBase(ABC):
                 @ 'cover' return True if friendly is covering
                 @ 'until' return True if there is `>= minimal_attacks`
                 count_attackers
-
-
         Returns:
 
         """
-        defending_team = None
-        attacking_color = None
-
-        "Input checking"
-        if field is None and fields is None:
-            raise ValueError("Specify field or fields!")
-        elif mode not in ['any_field', 'all_fields', 'cover', 'count_attackers']:
-            raise ValueError(f"Specify correct mode, not: {mode}")
-        elif field is not None and fields is not None:
-            raise ValueError("Specify only field or fields, not both.")
-
-        fig = self.board.get(field)
-        if defending is None and attacking is None:
-            if field:
-                if fig is None:
-                    raise ValueError("Field is empty, specify 'defending' team")
-                else:
-                    defending_team = fig.color
-            else:
-                raise ValueError("Specify 'defending' team when using 'fields'")
-
-        elif type(attacking) is int:
-            defending_team = None
-            attacking_color = attacking
-
-        elif type(defending) is not int:
-            raise ValueError(f"defending should be int, but got: {type(defending)}")
-
-        elif defending is not None:
-            defending_team = defending
-            attacking_color = None
-
-        if mode == "cover":
-            "Change cover to attacking 'anyfield'"
-            mode = "any_field"
-            minimal_attacks = 1
-            attacking_color = defending_team
-            defending_team = None
-
-        if field:
-            positions_to_check = [field]
-        else:
-            positions_to_check = fields
-
-        if mode == "any_field":
-            attacks_num = 0
-            pool = self.board.colors if attacking_color is not None else self.board.teams
-            for pool_id, team in pool.items():
-                if defending_team is not None and pool_id == defending_team:
-                    continue
-                if attacking_color is not None and pool_id != attacking_color:
-                    continue
-
-                for target in positions_to_check:
-                    reach = self._check_figures_reach(team, target, 1)
-                    if reach:
-                        attacks_num += 1
-                        if attacks_num >= minimal_attacks:
-                            return True
-
-        elif mode == "all_fields":
-            attacks_num = 0
-            minimal_attacks = len(positions_to_check)
-            for target in positions_to_check:
-                for team_id, team in self.board.teams.items():
-                    if team_id == defending_team:
-                        continue
-
-                    reach = self._check_figures_reach(team, target, 1)
-                    if reach:
-                        attacks_num += 1
-                        if attacks_num >= minimal_attacks:
-                            return True
-                        break
-
-            warn("Temporary checking: num>len")
-            if attacks_num == len(positions_to_check):
-                return True
-            elif attacks_num > len(positions_to_check):
-                raise ValueError(f"How there is more attacks? {attacks_num}")
-            else:
-                return False
-
-    def _check_figures_reach(self, fig_dict, target, min_n=1):
-        attacks = 0
-        for pos, fig in fig_dict.items():
-            attack_reach = self._move_checker.can_fig_reach_attack(self.board, fig, pos, target)
-            if attack_reach:
-                attacks += 1
-                if attacks >= min_n:
-                    return True
+        return self._move_checker.under_threat(
+                field=field, fields=fields,
+                defending=defending, attacking=attacking,
+                mode=mode, minimal_attacks=minimal_attacks
+        )
 
     def extra_move_rules(self, moving_color):
         """
@@ -546,15 +461,16 @@ class GameModeBase(ABC):
         return x, y
 
     def ints_to_strings(self, *arrs):
+        """Use positional arguments for multiple positions"""
         if len(arrs) == 1:
             x, y = arrs
             return self._int_to_str(x, y)
 
         elif type(arrs[0]) is tuple:
-            if type(arrs[0][0]) is int:
-                out = self._int_to_str(*arrs[0])
-            else:
-                out = [self._int_to_str(x, y) for x, y in arrs]
+            # if type(arrs[0][0]) is int:
+            #     out = self._int_to_str(*arrs[0])
+            # else:
+            out = [self._int_to_str(x, y) for x, y in arrs]
             return out
         else:
             raise ValueError(f"Unrecognized type: {type(arrs[0])}")
@@ -584,18 +500,22 @@ class GameModeBase(ABC):
 
 
 class FigMoveAnalyzer:
-    def __init__(self):
-        self.game_mode = None
-        self.board = None
-
-    def check(
-            self, game: GameModeBase, board: BoardBase,
-            f1: move_tuple, f2: move_tuple, ignore_check=False,
-    ):
+    def __init__(self, game, board):
+        # print(f"Fig Move analyzer initi \n" * 2)
+        # print(type(game))
+        # print(type(board))
         self.game = game
         self.board = board
-        # self.can_special = False
-        # self.spc = None
+        self.ret = {
+                'valid': None, 'spec': None, 'is_self_check_after': None,
+                'can_special': False,
+        }
+
+    def check(
+            self, f1: move_tuple, f2: move_tuple,
+            ignore_check=False,
+    ):
+
         self.ret = {
                 'valid': None, 'spec': None, 'is_self_check_after': None,
                 'can_special': False,
@@ -670,12 +590,12 @@ class FigMoveAnalyzer:
         return move_reach, attack_reach
 
     @staticmethod
-    def args_for_reach_checking(fig, f1, f2):
+    def args_for_reach_checking(fig, f1, f2, *a):
         move = f2[0] - f1[0], f2[1] - f1[1]
 
         direction = tuple(np.sign(np.array(move)))
         dist = max((abs(move[0]), abs(move[1])))
-        return fig, move, direction, dist, f1, f2
+        return fig, move, direction, dist, f1, f2, *a
 
     def _can_fig_reach_move(self, fig, move, direction, dist, f1, f2):
         if dist == 1:
@@ -698,12 +618,15 @@ class FigMoveAnalyzer:
             else:
                 return False
 
-    def can_fig_reach_attack(self, board, fig, f1, f2):
-        self.board = board
-        args = self.args_for_reach_checking(fig, f1, f2)
+    def can_fig_reach_attack(self, board, fig, f1, f2, ignore=None, block=None):
+        """Main function, to check reach, cals sub _name"""
+        # self.board = board
+        args = self.args_for_reach_checking(fig, f1, f2, ignore, block)
         return self._can_fig_reach_attack(*args)
 
-    def _can_fig_reach_attack(self, fig, move, direction, dist, f1, f2):
+    def _can_fig_reach_attack(
+            self, fig, move, direction, dist, f1, f2, ignore=None, block=None
+    ):
         if dist <= 0:
             return False
         if dist == 1:
@@ -714,7 +637,10 @@ class FigMoveAnalyzer:
             if fig.is_air_attack and direction in fig.attack_patterns:
                 return True
             elif direction in fig.attack_patterns:
-                fields = self._infinite_reach_checker(f1, direction, f2)
+                fields = self._infinite_reach_checker(
+                        f1, direction, f2,
+                        ignore=ignore, block=block
+                )
                 if f2 in fields:
                     return True
                 else:
@@ -725,21 +651,41 @@ class FigMoveAnalyzer:
             else:
                 return False
 
-    def infinite_reach_checker(self, game, board, f1, f2):
-        self.game = game
-        self.board = board
-        fig = board.get(f1)
+    def infinite_reach_checker(self, f1, f2):
+        """Main function for checking reach, calls sub fuction _<name>"""
+        # self.game = game
+        # self.board = board
+        fig = self.board.get(f1)
         args = self.args_for_reach_checking(fig, f1, f2)
         return self._infinite_reach_checker(*args)
 
-    def _infinite_reach_checker(self, start, direction, end=None):
+    def _infinite_reach_checker(
+            self, start, direction, end=None,
+            ignore=None, block=None):
+        """Iteration function, checking board in one direction"""
         x, y = start
         valid_moves = []
+        if ignore:
+            ig_x, ig_y = ignore
+            bl_x, bl_y = block
+        else:
+            ig_x, ig_y = None, None
+            bl_x, bl_y = None, None
+
         its = 0
         while True and its < 100:
             its += 1
             x = x + direction[0]
             y = y + direction[1]
+
+            if x == ig_x and y == ig_y:
+                "Ignore current position"
+                continue
+
+            if x == bl_x and y == bl_y:
+                "Position after move will block"
+                break
+
             tmp_move = x, y
             is_fig = self.board.get(tmp_move)
 
@@ -748,6 +694,7 @@ class FigMoveAnalyzer:
             elif x >= self.board.width or y >= self.board.height:
                 break
 
+            "If End, and it reach end pos then break"
             if end and tmp_move == end:
                 valid_moves.append(tmp_move)
                 break
@@ -758,6 +705,132 @@ class FigMoveAnalyzer:
             else:
                 valid_moves.append(tmp_move)
         return valid_moves
+
+    def under_threat(
+            self, field=None, fields=None,
+            defending: int = None, attacking=None,
+            mode='any_field', minimal_attacks=1,
+            ignore=None, block=None,
+    ):
+        """
+        Args:
+            field:
+            fields:
+            defending: int: color or team that is defending position
+            mode:
+                @ 'any_field' return True if any field is under threat
+                @ `all` return True if all fields are under threat
+                @ 'cover' return True if friendly is covering
+                @ 'until' return True if there is `>= minimal_attacks`
+                count_attackers
+            ignore: used only for any_field
+            block: used only for any_field
+        Returns:
+
+        """
+
+        defending_team = None
+        attacking_color = None
+
+        "Input checking"
+        if field is None and fields is None:
+            raise ValueError("Specify field or fields!")
+        elif mode not in ['any_field', 'all_fields', 'cover', 'count_attackers']:
+            raise ValueError(f"Specify correct mode, not: {mode}")
+        elif field is not None and fields is not None:
+            raise ValueError("Specify only field or fields, not both.")
+
+        fig = self.board.get(field)
+        if defending is None and attacking is None:
+            if field:
+                if fig is None:
+                    raise ValueError("Field is empty, specify 'defending' team")
+                else:
+                    defending_team = fig.color
+            else:
+                raise ValueError("Specify 'defending' team when using 'fields'")
+
+        elif type(attacking) is int:
+            defending_team = None
+            attacking_color = attacking
+
+        elif type(defending) is not int:
+            raise ValueError(f"defending should be int, but got: {type(defending)}")
+
+        elif defending is not None:
+            defending_team = defending
+            attacking_color = None
+
+        if mode == "cover":
+            "Change cover to attacking 'any_field'"
+            mode = "any_field"
+            minimal_attacks = 1
+            attacking_color = defending_team
+            defending_team = None
+
+        if field:
+            positions_to_check = [field]
+        else:
+            positions_to_check = fields
+
+        if mode == "any_field":
+            attacks_num = 0
+            pool = self.board.colors if attacking_color is not None else self.board.teams
+            for pool_id, team in pool.items():
+                if defending_team is not None and pool_id == defending_team:
+                    continue
+                if attacking_color is not None and pool_id != attacking_color:
+                    continue
+
+                for target in positions_to_check:
+                    reach = self._check_figures_reach(
+                            team, target, 1,
+                            ignore=ignore, block=block,
+                    )
+                    if reach:
+                        attacks_num += 1
+                        if attacks_num >= minimal_attacks:
+                            return True
+
+        elif mode == "all_fields":
+            attacks_num = 0
+            minimal_attacks = len(positions_to_check)
+            for target in positions_to_check:
+                for team_id, team in self.board.teams.items():
+                    if team_id == defending_team:
+                        continue
+
+                    reach = self._check_figures_reach(
+                            team, target, 1,
+                            ignore=ignore, block=block,
+                    )
+                    if reach:
+                        attacks_num += 1
+                        if attacks_num >= minimal_attacks:
+                            return True
+                        break
+
+            warn("Temporary checking: num>len")
+            if attacks_num == len(positions_to_check):
+                return True
+            elif attacks_num > len(positions_to_check):
+                raise ValueError(f"How there is more attacks? {attacks_num}")
+            else:
+                return False
+
+    def _check_figures_reach(self, fig_dict, target, min_n=1, ignore=None, block=None):
+        attacks = 0
+        for pos, fig in fig_dict.items():
+            if pos == block:
+                continue
+            attack_reach = self.can_fig_reach_attack(
+                    self.board, fig, pos, target,
+                    ignore=ignore, block=block,
+            )
+            if attack_reach:
+                attacks += 1
+                if attacks >= min_n:
+                    return True
 
     @abstractmethod
     def _check_consequences(self, team, f1, f2):
@@ -772,15 +845,17 @@ class FigMoveAnalyzer:
 
         """
 
-        # self.game.kings
-        # print(self.board.figs_on_board)
         kings = [
                 (pos, fig) for pos, fig in self.board.figs_on_board.items() if fig.name == "King" and fig.color == team
         ]
 
-        print(team, kings)
+        for p, k in kings:
+            th = self.under_threat(field=p, ignore=f1, block=f2)
+            # print(f"Move: {self.game.ints_to_strings(f1, f2)}, {th}")
+            if th:
+                break
 
-        return None
+        return th
 
     def _can_fig_special(self, fig: FigureBase, f1, f2):
         if fig.specials is not None:
