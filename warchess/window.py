@@ -1,12 +1,13 @@
+import imutils
 import pygame
 import numpy as np
-import imutils
 import cv2
 import time
 import sys
 import os
 
 from classes import ClassicGame
+from pygame import mixer
 
 pygame.init()
 
@@ -24,6 +25,14 @@ game.ignore_turn = True
 offset = 50
 box = 50
 board_blend = 60
+
+# pygame.mixer.pre_init(44100, -16, 2, 512)
+mixer.init()
+snd_move = pygame.mixer.Sound(f"sounds{os.sep}wood_move_1.mp3")
+snd_hit = pygame.mixer.Sound(f"sounds{os.sep}wood_hit_1.mp3")
+
+
+# snd_move.set_volume(0.2)
 
 
 def get_box_pos(mouse_pos):
@@ -119,7 +128,11 @@ while True and (time.time() - t0) < duration:
                 activ = field
 
             elif left and activ:
-                game.make_move(activ, field)
+                hit = game.make_move(activ, field)
+                if hit:
+                    snd_hit.play()
+                else:
+                    snd_move.play()
                 activ = None
 
             if right:

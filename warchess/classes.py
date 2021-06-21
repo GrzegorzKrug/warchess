@@ -92,6 +92,8 @@ class PawnRush(SpecialBase):
 
     def apply(self, game, board, f1, f2):
         board.move_figure(f1, f2)
+        fig = board.get(f2)
+        fig.did_rush = True
 
 
 class EnPassant(SpecialBase):
@@ -111,9 +113,9 @@ class EnPassant(SpecialBase):
         if abs(x - bx) != 1:
             return False
 
-        if by == 5 and y == 4:
+        if y == 4 and by == 5:
             fig2_pos = bx, y
-        elif by == 2 and y == 3:
+        elif y == 3 and by == 2:
             fig2_pos = bx, y
         else:
             return False
@@ -124,7 +126,7 @@ class EnPassant(SpecialBase):
             print("Not a pawn")
             return False
 
-        if fig1.color == fig2.color:
+        if fig1.team == fig2.team:
             print("Same fig colors")
             return False
 
@@ -140,7 +142,7 @@ class EnPassant(SpecialBase):
         bx, by = f2
         # fig1 = board.get(f1)
 
-        if y == 5:
+        if y == 4:
             fig2_pos = bx, by - 1
         elif y == 3:
             fig2_pos = bx, by + 1
@@ -400,7 +402,6 @@ class ClassicGame(GameModeBase):
         self.board = Board(8, 8)
         self.checks = {num: False for num in range(self.players_num)}
         self.kings = {0: dict(), 1: dict()}
-        self.init_analyzer()
         self.new_game()
 
     def new_game(self):

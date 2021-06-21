@@ -26,6 +26,21 @@ def get_same_tuple(tuplelike):
         return special_tuple
 
 
+class InvalidMove(Exception):
+    """Main Exceptions for all wrong moves"""
+    pass
+    # def __init__(self):
+    #     pass
+
+
+class IncorrectTurn(InvalidMove):
+    pass
+
+
+class InvalidBoardIndexes(InvalidMove):
+    pass
+
+
 class FigureBase(ABC):
     def __init__(self, color=0, team=None, face_direction=None, was_moved=False,
                  air_move=False, air_attack=False, stationary_attack=False,
@@ -321,14 +336,16 @@ class GameModeBase(ABC):
         self.last_hit = 0  # Moves from last hit
         self.move_count = 0  # Move counter
         self.kings = {num: dict() for num in range(self.players_num)}
-        self._move_checker = None
-        self.ignore_turn=False
-        self.init_analyzer()
+        self._move_checker = FigMoveAnalyzer(self)
+        self.ignore_turn = False
 
-    def init_analyzer(self):
-        self._move_checker = FigMoveAnalyzer(self, self.board)
+    def make_move_from_str(self, *args):
+        """Confert keys to ints and call make_move"""
+        pos = self.strings_to_ints(*args)
+        ret = self.make_move(pos)
+        return ret
 
-    def make_move(self, *args, ignore_turn=False):
+    def make_move(self, *args):
         """
 
         Args:
@@ -343,10 +360,8 @@ class GameModeBase(ABC):
         else:
             f1, f2 = args[0]
 
-        self._resolve_action(f1, f2)
-
-    def _make_move(self, f1, f2):
-        self._resolve_action(f1, f2)
+        ret = self._resolve_action(f1, f2)
+        return ret
 
     def _post_move_actions(self, field2):
         """
@@ -373,27 +388,30 @@ class GameModeBase(ABC):
 
     def _resolve_action(self, f1, f2):
         is_ok = self._move_checker.check(f1, f2)
+        ret = self._move_checker.ret
         tmp_brd = deepcopy(self.board)
         if is_ok:
-            self.board.move_figure(f1, f2)
-            self._post_move_actions(f2)
-        elif self._move_checker.ret['can_special']:
-            spc = self._move_checker.ret['spec']
-            spc.apply(self, self.board, f1, f2)
-            self._post_special_actions(f2)
+            if ret['valid']:
+                self.board.move_figure(f1, f2)
+                self._post_move_actions(f2)
+            elif ret['can_special']:
+                spc = self._move_checker.ret['spec']
+                spc.apply(self, self.board, f1, f2)
+                self._post_special_actions(f2)
+            else:
+                raise InvalidMove()
         else:
-            # print()
-            print(f"Incorrect move: {f1}->{f2}")
-            return None
+            # print(
+            raise InvalidMove(f"Move: {f1} -> {f2} ({self.ints_to_strings(f1, f2)}): {ret}")
 
         if self.extra_move_rules(self.current_player_turn):
             "Its ok"
         else:
             self.board = tmp_brd
-            # raise ValueError(f"Invalid move!{f1} to {f2}. reverting board")
-            return None
+            raise ValueError(f"Invalid move!{f1} to {f2}. reverting board")
 
         self.current_player_turn = (self.current_player_turn + 1) % self.players_num
+        return True
 
     def under_threat(self, field=None, fields=None,
                      defending: int = None, attacking=None,
@@ -414,11 +432,12 @@ class GameModeBase(ABC):
         Returns:
 
         """
-        return self._move_checker.under_threat(
+        ret = self._move_checker.under_threat(
                 field=field, fields=fields,
                 defending=defending, attacking=attacking,
                 mode=mode, minimal_attacks=minimal_attacks
         )
+        return ret
 
     def extra_move_rules(self, moving_color):
         """
@@ -481,9 +500,9 @@ class GameModeBase(ABC):
         x = ord(x.lower()) - 97  # a=97,
 
         if x < 0 or y < 0:
-            raise ValueError("Field index is under 0!")
+            raise InvalidBoardIndexes("Field index is under 0!")
         if x >= self.board.width or y >= self.board.height:
-            raise ValueError(f"Field index is too high: x:{x} y:{y}")
+            raise InvalidBoardIndexes(f"Field index is too high: x:{x} y:{y}")
         return x, y
 
     def ints_to_strings(self, *arrs):
@@ -526,16 +545,19 @@ class GameModeBase(ABC):
 
 
 class FigMoveAnalyzer:
-    def __init__(self, game, board):
+    def __init__(self, game):
         # print(f"Fig Move analyzer initi \n" * 2)
         # print(type(game))
         # print(type(board))
         self.game = game
-        self.board = board
         self.ret = {
                 'valid': None, 'spec': None, 'is_self_check_after': None,
                 'can_special': False,
         }
+
+    @property
+    def board(self):
+        return self.game.board
 
     def check(
             self, f1: move_tuple, f2: move_tuple,
@@ -563,7 +585,7 @@ class FigMoveAnalyzer:
         "Wrong figure, Turn for other player"
         if self.game.current_player_turn != fig.color and not self.game.ignore_turn:
             self.ret['valid'] = False
-            return False
+            raise IncorrectTurn(f"Turn is now for: {self.game.current_player_turn}")
 
         move_reach, attack_reach = self._can_fig_reach(fig, f1, f2)
         can_move = self._can_fig_move(fig, target)
@@ -584,8 +606,8 @@ class FigMoveAnalyzer:
             return True
 
         "If no move or no attack, check specials"
-        self._can_fig_special(fig, f1, f2)
-        return False
+        ret = self._can_fig_special(fig, f1, f2)
+        return ret
 
     @staticmethod
     def _can_fig_attack(fig: FigureBase, target: FigureBase, ignore=None):
@@ -779,7 +801,6 @@ class FigMoveAnalyzer:
                     defending_team = fig.color
             else:
                 raise ValueError("Specify 'defending' team when using 'fields'")
-
         elif type(attacking) is int:
             defending_team = None
             attacking_color = attacking
@@ -900,6 +921,7 @@ class FigMoveAnalyzer:
                     self.ret['spec'] = spc
                     self.ret['can_special'] = True
                     return True
+        return False
 
     @abstractmethod
     def _is_game_over(self):

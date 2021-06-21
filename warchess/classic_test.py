@@ -1,6 +1,7 @@
 import pytest
 
 from classes import Rook, Pawn, Knight, Queen, King, Bishop, ClassicGame
+from abstracts import InvalidMove
 
 
 def test_1_():
@@ -28,7 +29,7 @@ def test_1_fig_attrs():
             assert type(f.specials) is tuple
 
 
-def test_2_():
+def test_2_simple_moves():
     g = ClassicGame()
     g.new_game()
     g.board.print_table()
@@ -38,10 +39,10 @@ def test_2_():
     g.make_move((1, 1), (1, 3))
     g.make_move((1, 6), (1, 4))
 
-    with pytest.raises(ValueError) as err:
+    with pytest.raises(InvalidMove) as err:
         g.make_move((0, 6), (0, 5))
 
-    with pytest.raises(ValueError) as err:
+    with pytest.raises(InvalidMove) as err:
         g.make_move((0, 1), (0, 2))
 
 
@@ -53,11 +54,29 @@ def test_3_load_fen():
 def test_4_enpassant():
     g = ClassicGame()
     g.load_fen("rnbqkbnr/pp1p1ppp/8/2pPp3/8/8/PPP1PPPP/RNBQKBNR w KQkq c6 0 3")
-    with pytest.raises(ValueError) as err:
+    with pytest.raises(InvalidMove) as err:
         g.make_move(g.strings_to_ints("d5", "e6"))
 
     assert g._is_move_valid(*g.strings_to_ints("d5", "d6"))
     assert g._is_move_valid(*g.strings_to_ints("d5", "c6"))
+
+
+def test_4_enpassant_move():
+    g = ClassicGame()
+    g.load_fen("rnbqkbnr/pp1p1ppp/8/2pPp3/8/8/PPP1PPPP/RNBQKBNR w KQkq c6 0 3")
+
+    assert g.make_move(*g.strings_to_ints("d5", "d6"))
+    # assert g._is_move_valid(*g.strings_to_ints("d5", "c6"))
+
+
+def test_4_enpassant_move2():
+    g = ClassicGame()
+    g.load_fen("rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 1")
+
+    assert g.make_move(*g.strings_to_ints("d4", "d5"))
+    assert g.make_move(*g.strings_to_ints("e7", "e5"))
+    assert g.make_move(*g.strings_to_ints("d5", "e6"))
+    # assert g._is_move_valid(*g.strings_to_ints("d5", "c6"))
 
 
 def test_5_load_fen_2():
@@ -69,7 +88,7 @@ def test_5_enpassant_move():
     g = ClassicGame()
     g.load_fen("rnbqkbnr/4pp1p/1pp5/pB4p1/2Pp3P/P3P3/1P1P1PP1/RNBQ1KNR b kq c3 0 7")
     g.board.print_table()
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidMove):
         g.make_move(g.strings_to_ints("d5", "e6"))
 
     assert g._is_move_valid(*g.strings_to_ints("d4", "d3"))
@@ -1006,8 +1025,58 @@ def test_26_checking_board_clear():
     assert len(kings) == 1, "There should be only 1 king"
 
 
-def test_26_():
-    pass
+def test_26_check_rush_statsu():
+    g = ClassicGame()
+    g.load_fen("rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 1")
+
+    assert g.make_move(*g.strings_to_ints("e2", "e4"))
+    fig = g.board.get(*g.strings_to_ints(['e4']))
+
+    print(fig)
+    print(fig.did_rush)
+
+    assert fig.did_rush, "Pawn rushed!"
+
+    assert g.make_move(*g.strings_to_ints("f7", "f6"))
+
+    assert not fig.did_rush, "Rush status should be removed!"
+    # assert g._is_move_valid(*g.strings_to_ints("d5", "
+
+
+def test_27_enpasannt_and_check():
+    g = ClassicGame()
+    g.load_fen("rnbqkrb1/1pppp1pp/8/5P2/8/8/1PP1PKPP/RNBQ1BNR b q - 0 1")
+    g.board.print_board()
+
+    g.make_move_from_str("e7", "e5")
+
+    with pytest.raises(InvalidMove):
+        g.make_move_from_str("f5", "e6")
+    g.make_move_from_str("f5", "f6")
+
+
+def test_27_enpasannt_and_check2():
+    g = ClassicGame()
+    g.load_fen("rnbqk1r1/1pppp1pp/8/5P2/8/8/1PP1P1KP/RNBQ1BNR b q - 0 1")
+    g.board.print_board()
+
+    g.make_move_from_str("g7", "g5")
+
+    g.make_move_from_str("f5", "g6")
+    # g.make_move_from_str("f5", "f6"
+
+
+def test_27_enpasannt_and_check3():
+    g = ClassicGame()
+    g.load_fen("rnbqk1r1/1pp1p1pp/8/5P2/8/7K/1PP1P2P/RNBQ1BNR b q - 0 1")
+    g.board.print_board()
+
+    g.make_move_from_str("g7", "g5")
+    with pytest.raises(InvalidMove):
+        g.make_move_from_str("f5", "g6")
+
+    with pytest.raises(InvalidMove):
+        g.make_move_from_str("f5", "f6")
 
 
 def test_27_():
