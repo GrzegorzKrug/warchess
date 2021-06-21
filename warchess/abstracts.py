@@ -96,6 +96,10 @@ class FigureBase(ABC):
     def name(self):
         return "BaseFigure"
 
+    @abstractproperty
+    def symbol(self):
+        return "BF"
+
     def __str__(self):
         return f"{self.name}: Fly:{str(self.is_air_move)[0]}, " \
                f"Inf:{str(self.is_move_infinite)[0]}, " \
@@ -162,9 +166,11 @@ class BoardBase(ABC):
         self.height = height
         self.figs_on_board = dict()
         self.teams = self._empty_2d_dict(2)
+        # self.kings = self._empty_2d_dict(2)
         self.colors = self._empty_2d_dict(2)
 
     def _empty_2d_dict(self, n=2):
+        """Creates N dictionaries"""
         return {num: dict() for num in range(n)}
 
     @property
@@ -184,6 +190,17 @@ class BoardBase(ABC):
             self.figs_on_board[field] = fig
             self.colors[color][field] = fig
             self.teams[team][field] = fig
+
+    def clear_board(self):
+        for pos, fig in self:
+            self.remove_figure(pos)
+
+    def __iter__(self):
+        """
+        Returns copy of board figures
+        {pos: fig}
+        """
+        return iter(self.figs_on_board.copy().items())
 
     def change_fig(self, field, fig):
         """
@@ -220,12 +237,8 @@ class BoardBase(ABC):
         assert fig == fig2 == fig3, "Figures should be the same"
         return fig
 
-    def clear_board(self):
-        self.__init__()
-
     def move_figure(self, field1, field2):
         fig = self.remove_figure(field1)
-        # self.add_figure(field2, fig)
         self.change_fig(field2, fig)
         fig.move()
 
@@ -251,6 +264,13 @@ class BoardBase(ABC):
 
     def print_board(self, *a, **kw):
         self.print_table(*a, **kw)
+
+    @property
+    def fields(self):
+        for x in range(self.width):
+            for y in range(self.height):
+                color = (x + y) % 2
+                yield (x, y), color
 
     def print_table(self, justify=7, flip=False):
         if flip:
@@ -301,12 +321,14 @@ class GameModeBase(ABC):
         self.last_hit = 0  # Moves from last hit
         self.move_count = 0  # Move counter
         self.kings = {num: dict() for num in range(self.players_num)}
+        self._move_checker = None
+        self.ignore_turn=False
         self.init_analyzer()
 
     def init_analyzer(self):
         self._move_checker = FigMoveAnalyzer(self, self.board)
 
-    def make_move(self, *args):
+    def make_move(self, *args, ignore_turn=False):
         """
 
         Args:
@@ -321,8 +343,7 @@ class GameModeBase(ABC):
         else:
             f1, f2 = args[0]
 
-        print(type(f1), type(f2))
-        self._make_move(f1, f2)
+        self._resolve_action(f1, f2)
 
     def _make_move(self, f1, f2):
         self._resolve_action(f1, f2)
@@ -361,13 +382,16 @@ class GameModeBase(ABC):
             spc.apply(self, self.board, f1, f2)
             self._post_special_actions(f2)
         else:
-            raise ValueError("Incorrect move")
+            # print()
+            print(f"Incorrect move: {f1}->{f2}")
+            return None
 
         if self.extra_move_rules(self.current_player_turn):
             "Its ok"
         else:
             self.board = tmp_brd
-            raise ValueError(f"Invalid move!{f1} to {f2}. reverting board")
+            # raise ValueError(f"Invalid move!{f1} to {f2}. reverting board")
+            return None
 
         self.current_player_turn = (self.current_player_turn + 1) % self.players_num
 
@@ -376,6 +400,7 @@ class GameModeBase(ABC):
                      mode='any_field', minimal_attacks=1
                      ):
         """
+        Calls move analyzer object.
         Args:
             field:
             fields:
@@ -463,16 +488,16 @@ class GameModeBase(ABC):
 
     def ints_to_strings(self, *arrs):
         """Use positional arguments for multiple positions"""
-        if len(arrs) == 1:
+        if isinstance(arrs[0], (list, tuple, move_tuple, np.ndarray)):
+            out = [self._int_to_str(x, y) for x, y in arrs]
+            if len(out) == 1:
+                return out[0]
+            return out
+
+        elif len(arrs) == 1:
             x, y = arrs
             return self._int_to_str(x, y)
 
-        elif type(arrs[0]) is tuple:
-            # if type(arrs[0][0]) is int:
-            #     out = self._int_to_str(*arrs[0])
-            # else:
-            out = [self._int_to_str(x, y) for x, y in arrs]
-            return out
         else:
             raise ValueError(f"Unrecognized type: {type(arrs[0])}")
 
@@ -536,7 +561,7 @@ class FigMoveAnalyzer:
             return False
 
         "Wrong figure, Turn for other player"
-        if self.game.current_player_turn != fig.color:
+        if self.game.current_player_turn != fig.color and not self.game.ignore_turn:
             self.ret['valid'] = False
             return False
 
@@ -749,7 +774,7 @@ class FigMoveAnalyzer:
         if defending is None and attacking is None:
             if field:
                 if fig is None:
-                    raise ValueError("Field is empty, specify 'defending' team")
+                    raise ValueError(f"Field {field} has no fig, specify 'defending' team")
                 else:
                     defending_team = fig.color
             else:
@@ -857,7 +882,6 @@ class FigMoveAnalyzer:
         th = False
         for p, k in kings:
             if p == f1:
-                print("Moving king")
                 th = self.under_threat(field=f2, defending=k.team, ignore=f1)
             else:
                 th = self.under_threat(field=p, ignore=f1, block=f2)

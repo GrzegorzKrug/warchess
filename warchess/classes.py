@@ -39,10 +39,14 @@ class Pawn(FigureBase):
 
     @property
     def name(self):
-        if self.color == 0:
-            return "WPawn"
-        else:
-            return "BPawn"
+        # if self.color == 0:
+        #     return "Pawn"
+        # else:
+        return "Pawn"
+
+    @property
+    def symbol(self):
+        return "P"
 
     def make_special_move(self):
         assert not self.was_moved, "Pawn can't be moved"
@@ -176,6 +180,10 @@ class Knight(FigureBase):
     def name(self):
         return "Knight"
 
+    @property
+    def symbol(self):
+        return "N"
+
 
 class Bishop(FigureBase):
     def __init__(self, *a, inf_move=True, inf_attack=True, **kw):
@@ -197,6 +205,10 @@ class Bishop(FigureBase):
     @property
     def name(self):
         return "Bishop"
+
+    @property
+    def symbol(self):
+        return "B"
 
 
 class Queen(FigureBase):
@@ -227,17 +239,24 @@ class Queen(FigureBase):
     def name(self):
         return "Queen"
 
+    @property
+    def symbol(self):
+        return "Q"
+
 
 class King(Queen):
     def __init__(self, *a, inf_move=False, inf_attack=False, **kw):
         super().__init__(*a, inf_move=inf_move, inf_attack=inf_attack, **kw)
 
         self._specials = (Castle(),)
-        # print(self._special)
 
     @property
     def name(self):
         return "King"
+
+    @property
+    def symbol(self):
+        return "K"
 
 
 class Castle(SpecialBase):
@@ -305,22 +324,27 @@ class Castle(SpecialBase):
         x, y = f2
         if x == 6 and y == 0:
             rk = board.get((7, 0))
+            corn_field = (7, 0)
             rook_field = (5, 0)
         elif x == 2 and y == 0:
             rk = board.get((0, 0))
+            corn_field = (0, 0)
             rook_field = (3, 0)
 
         elif x == 6 and y == 7:
             rk = board.get((7, 7))
+            corn_field = (7, 7)
             rook_field = (5, 7)
         elif x == 6 and y == 0:
             rk = board.get((0, 7))
+            corn_field = (0, 7)
             rook_field = (3, 7)
         else:
             raise ValueError(f"Impossible move:{f1} -> {f2}")
 
         board.move_figure(f1, f2)
-        board.add_figure(rook_field, rk)
+        board.move_figure(corn_field, rook_field)
+        # board.add_figure(rook_field, rk)
 
     @property
     def name(self):
@@ -360,6 +384,10 @@ class Rook(FigureBase):
     def name(self):
         return "Rook"
 
+    @property
+    def symbol(self):
+        return "R"
+
 
 class Board(BoardBase):
     def __init__(self, *a, **kw):
@@ -371,25 +399,15 @@ class ClassicGame(GameModeBase):
         super().__init__()
         self.board = Board(8, 8)
         self.checks = {num: False for num in range(self.players_num)}
+        self.kings = {0: dict(), 1: dict()}
         self.init_analyzer()
+        self.new_game()
 
     def new_game(self):
         self.load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-        self._initial_checks()
-
-    def _initial_checks(self):
-        for color in range(self.players_num):
-            for pos in self.kings[color]:
-                is_check = self.under_threat(field=pos)
-
-                if is_check and self.current_player_turn != color:
-                    raise ValueError(f"Invalid Game. player moved into check: {color}")
-                elif is_check:
-                    self.checks[color] = True
-                else:
-                    self.checks[color] = False
 
     def load_fen(self, fen):
+        self.kings = self.board._empty_2d_dict(2)
         self._load_fen(fen)
         self._initial_checks()
 
@@ -401,6 +419,7 @@ class ClassicGame(GameModeBase):
         Castling possibilities
         Enpassant to this field.
         2 x Counter
+
         Small letters - black
         Big letter - white
         Args:
@@ -435,7 +454,6 @@ class ClassicGame(GameModeBase):
                     continue
                 if isinstance(fig, (King,)):
                     self.kings[fig.color][x, y] = fig
-                    print(f"Adding king: {fig.color}, to ({x},{y})")
                 x += 1
 
         self.current_player_turn = 0 if cur_player == "w" else 1
@@ -477,6 +495,18 @@ class ClassicGame(GameModeBase):
 
         self.last_hit = lasthit
         self.move_count = move_count
+
+    def _initial_checks(self):
+        for color in range(self.players_num):
+            for pos in self.kings[color]:
+                is_check = self.under_threat(field=pos)
+
+                if is_check and self.current_player_turn != color:
+                    raise ValueError(f"Invalid Game. player moved into check: {color}")
+                elif is_check:
+                    self.checks[color] = True
+                else:
+                    self.checks[color] = False
 
     def get_proper_figure(self, name, color):
         name = name.lower()

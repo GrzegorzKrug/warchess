@@ -2,10 +2,12 @@ atomicwrites==1.4.0
 attrs==21.2.0
 certifi==2021.5.30
 colorama==0.4.4
+imutils==0.5.4
 iniconfig==1.1.1
 numpy==1.20.3
 opencv-python==4.5.2.54
 packaging==20.9
+Pillow==8.2.0
 pip==21.1.2
 pluggy==0.13.1
 py==1.10.0

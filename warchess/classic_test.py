@@ -857,6 +857,7 @@ def test_16_move_out_of_check2():
 
     moves = [
             ('d2', 'c1'),
+            ('d2', 'e3'),
     ]
     for pair in moves:
         assert not g._is_move_valid(*g.strings_to_ints(*pair)), f"This is not valid move, {pair}"
@@ -990,8 +991,19 @@ def test_24_loading_check():
     raise NotImplementedError
 
 
-def test_25():
-    raise NotImplementedError
+def test_26_checking_board_clear():
+    g = ClassicGame()
+    g.new_game()
+    g.new_game()
+    g.new_game()
+    g.new_game()
+    g.new_game()
+    kings = g.kings[0]
+    assert len(kings) == 1, "There should be only 1 king"
+
+    kings = g.kings[0]
+    assert len(kings) == 1, "There should be only 1 king"
+    assert len(kings) == 1, "There should be only 1 king"
 
 
 def test_26_():
