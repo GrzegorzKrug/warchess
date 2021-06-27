@@ -294,7 +294,7 @@ def test_11_white_bishop():
 
 def test_11_white_bishop_2():
     g = ClassicGame()
-    g.load_fen("2kr1bn1/pp3ppn/2p5/2n1b1q1/8/1p2p3/p2p1ppp/2kr3r w - - 1 20")
+    g.load_fen("2kr1bn1/pp3ppn/2p5/2n1b1q1/8/1p2p3/p2p1ppp/2kr3r b - - 1 20")
     g.board.print_table()
 
     assert not g._is_move_valid(*g.strings_to_ints("e5", "h2"))
@@ -1025,7 +1025,7 @@ def test_26_checking_board_clear():
     assert len(kings) == 1, "There should be only 1 king"
 
 
-def test_26_check_rush_statsu():
+def test_26_check_rush_status():
     g = ClassicGame()
     g.load_fen("rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 1")
 

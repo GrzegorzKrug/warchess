@@ -124,6 +124,19 @@ class FigureBase(ABC):
         return str(self)
 
 
+"""
+Problem that I must solve:
+    - How to apply variant
+    - How to check requirements for more
+    - How to rotate/flip patterns
+    - How to revert special
+    - How to modify other pieces
+    - How to revert other pieces
+    - How to save move
+    - Distinguish variant from all moves
+"""
+
+
 class SpecialBase(ABC):
     """
     Base for special moves, unconventional.
@@ -522,9 +535,9 @@ class GameModeBase(ABC):
 
     def _int_to_str(self, x, y):
         if x < 0 or y < 0:
-            raise ValueError("Field index is under 0!")
+            raise InvalidBoardIndexes("Field index is under 0!")
         if x >= self.board.width or y >= self.board.height:
-            raise ValueError(f"Field index is too high: x:{x} y:{y}")
+            raise InvalidBoardIndexes(f"Field index is too high: x:{x} y:{y}")
 
         cols = self.board.columns
         rows = self.board.rows

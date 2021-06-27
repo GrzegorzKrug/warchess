@@ -6,6 +6,8 @@ import time
 import sys
 import os
 
+
+from abstracts import InvalidMove
 from classes import ClassicGame
 from pygame import mixer
 
@@ -128,7 +130,11 @@ while True and (time.time() - t0) < duration:
                 activ = field
 
             elif left and activ:
-                hit = game.make_move(activ, field)
+                try:
+                    hit = game.make_move(activ, field)
+                except InvalidMove:
+                    hit= None
+
                 if hit:
                     snd_hit.play()
                 else:
