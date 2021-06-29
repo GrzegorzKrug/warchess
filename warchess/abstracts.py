@@ -137,13 +137,91 @@ Problem that I must solve:
 """
 
 
+class RequiredFig:
+    """
+    Key 0/None = Any
+    Key -1 Same
+    Key -2 Opposite
+    """
+    keys = {
+            "any": 0,
+            "same": -1,
+            "enemy": -2,
+            "opposite": -2,
+            "none": -3,
+            "None": -3,
+    }
+
+    def __init__(self):
+        pass
+
+    def req_team(self) -> int:
+        return -1
+
+    def req_color(self) -> int:
+        return -1
+
+    def req_type(self) -> Union[int, str, FigureBase]:
+        return -1
+
+    def req_status(self) -> list[dict]:
+        return []
+
+    def req_target(self):
+        pass
+
+    def req_pos(self):
+        pass
+
+    def get_key_val(self, key):
+        return self.keys.get(key)
+
+
+class RequiredPawnWhoRushed(RequiredFig):
+
+    def req_team(self):
+        return self.keys['enemy']
+
+    def req_type(self):
+        return self.keys['same']
+
+    def req_status(self):
+        return [{'rushed': True}]
+
+
+class SpecialVariant:
+    def __init__(self):
+        self.pattern = None
+        self.offset = (0, 0)  # Change when board is bigger or smaller
+
+        "For check checking"
+        self.block = None
+        self.ignore = None
+
+    def is_var_valid(self, n):
+        pass
+
+    def apply_var(self, n):
+        pass
+
+    def timed_status(self):
+        pass
+
+
+class Rush(SpecialVariant):
+    def __init__(self):
+        super().__init__()
+
+        self.pattern = (0, 2)
+
+
 class SpecialBase(ABC):
     """
     Base for special moves, unconventional.
     """
 
     def __init__(self):
-        self.patterns = None
+        self.variants = []
         self._named_tup = namedtuple(self.name, field_names=["X", "Y"])
 
     @abstractproperty
@@ -152,6 +230,10 @@ class SpecialBase(ABC):
 
     @property
     def named_tup(self):
+        """
+        General tuple for move patterns
+            Tuple(X, Y)
+        """
         return self._named_tup
 
     @abstractmethod
@@ -160,9 +242,6 @@ class SpecialBase(ABC):
 
     @abstractmethod
     def apply(self, game, board, f1, f2):
-        pass
-
-    def counter_check(self):
         pass
 
     def rotate_this(self, right=True):

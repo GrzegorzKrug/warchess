@@ -5,8 +5,9 @@ from warnings import warn
 
 from copy import copy, deepcopy
 
-from abstracts import FigureBase, SpecialBase, \
-    attack_tuple, move_tuple, BoardBase, GameModeBase
+from abstracts import FigureBase, \
+    SpecialVariant, SpecialBase, \
+    attack_tuple, move_tuple, BoardBase, GameModeBase, RequiredFig
 
 import numpy as np
 import time
@@ -33,9 +34,6 @@ class Pawn(FigureBase):
             for spec in self._specials:
                 spec.flip_this_by_y()
 
-        # print(self._move_pattern)
-        # print(self._attack_pattern)
-        # print(self._special)
 
     @property
     def name(self):
@@ -392,8 +390,7 @@ class Rook(FigureBase):
 
 
 class Board(BoardBase):
-    def __init__(self, *a, **kw):
-        super().__init__(*a, **kw)
+    pass
 
 
 class ClassicGame(GameModeBase):
