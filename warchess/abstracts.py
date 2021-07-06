@@ -137,6 +137,54 @@ Problem that I must solve:
 """
 
 
+class Position:
+    pos_keys = [
+            'relative', 'relative_f1', 'relative_f2',
+            'absolute', 'classic', 'any'
+    ]
+
+    def __init__(self, key: str, pos):
+        """"""
+
+        key = key.lower()
+        self.key = key
+        self.pos = pos
+
+        assert key in self.pos_keys, f"This key is not valid for pos: {key}"
+
+    def get_ccp(self, board):
+        ccp = 0, 1
+        return ccp
+
+    def get_pos_from_ccp(self, board, ccp):
+        return 0, 1
+
+    def rotate_this(self, board, right=True):
+        ccp = self.get_ccp(board)
+        if right:
+            new_ccp = ((y, -x) for x, y in ccp)
+        else:
+            new_ccp = ((-y, x) for x, y in ccp)
+
+        pos = self.get_pos_from_ccp(board, new_ccp)
+        self.pos = pos
+
+    def flip_this_by_x(self, board):
+        x, y = self.get_ccp()
+        new_ccp = (-x, y)
+        pos = self.get_pos_from_ccp(board, new_ccp)
+        self.pos = pos
+
+    def flip_this_by_y(self, board):
+        x, y = self.get_ccp()
+        new_ccp = (x, -y)
+        pos = self.get_pos_from_ccp(board, new_ccp)
+        self.pos = pos
+
+    def get_value(self, board, f1, f2):
+        pass
+
+
 class RequiredFig:
     """
     Key 0/None = Any
@@ -146,47 +194,59 @@ class RequiredFig:
     keys = {
             "any": 0,
             "same": -1,
+            "other": -2,
             "enemy": -2,
             "opposite": -2,
-            "none": -3,
             "None": -3,
+            "none": -3,
     }
+    inv_keys = {v: k for k, v in keys.items()}
 
-    def __init__(self):
-        pass
+    def __init__(self,
+                 req_team=0, req_color=0, req_type=0,
+                 req_status=None,
+                 pos: tuple = None,
+                 ):
 
-    def req_team(self) -> int:
-        return -1
+        self.req_team = req_team
+        self.req_color = req_color
+        self.req_type = req_type
 
-    def req_color(self) -> int:
-        return -1
+        if req_status:
+            assert isinstance(req_status, (dict,)), f"Status must be dict, but got {type(req_status)}"
+            self.req_status = req_status
+        else:
+            self.req_status = {}
 
-    def req_type(self) -> Union[int, str, FigureBase]:
-        return -1
+        k, p = pos
+        self.req_pos = Position(k, p)
 
-    def req_status(self) -> list[dict]:
-        return []
-
-    def req_target(self):
-        pass
-
-    def req_pos(self):
+    def check_pos(self, board, posf1, posf2):
         pass
 
     def get_key_val(self, key):
         return self.keys.get(key)
 
 
-class RequiredPawnWhoRushed(RequiredFig):
+# class RequiredPawnWhoRushed(RequiredFig):
+#     def req_team(self):
+#         return self.keys['enemy']
+#
+#     def req_type(self):
+#         return self.keys['same']
+#
+#     def req_status(self):
+#         return [{'rushed': True}]
 
-    def req_team(self):
-        return self.keys['enemy']
 
-    def req_type(self):
-        return self.keys['same']
-
-    def req_status(self):
-        return [{'rushed': True}]
+req_rush_r = RequiredFig(
+        req_type="P", req_status={"rushed": True},
+        pos=('relative_f1', (1, 0)), req_team=RequiredFig.keys['enemy']
+)
+req_rush_r = RequiredFig(
+        req_type="P", req_status={"rushed": True},
+        pos=('relative_f1', (1, 0)), req_team=RequiredFig.keys['enemy']
+)
 
 
 class SpecialVariant:
@@ -403,6 +463,28 @@ class BoardBase(ABC):
         text = " " * 3 + ''.join([f"{let:^{justify}}" for let in self.columns])
         print(text)
 
+    def string_to_index(self, field):
+        x, y = field.lower()
+        y = int(y) - 1
+        x = ord(x.lower()) - 97  # a=97,
+
+        if x < 0 or y < 0:
+            raise InvalidBoardIndexes("Field index is under 0!")
+        if x >= self.width or y >= self.height:
+            raise InvalidBoardIndexes(f"Field index is too high: x:{x} y:{y}")
+        return x, y
+
+    def index_to_str(self, x, y):
+        if x < 0 or y < 0:
+            raise InvalidBoardIndexes("Field index is under 0!")
+        if x >= self.width or y >= self.height:
+            raise InvalidBoardIndexes(f"Field index is too high: x:{x} y:{y}")
+
+        cols = self.columns
+        rows = self.rows
+        field_str = cols[x] + rows[y]
+        return field_str
+
 
 class Action:
     def __init__(self, f1, f2, fig, spec=None, killed=None):
@@ -565,7 +647,7 @@ class GameModeBase(ABC):
 
     def strings_to_ints(self, *arrs):
         """
-        Field postions notations example: "E1" -> (0, 4)
+        Field positions notations example: "E1" -> (0, 4)
         Translate any number of string into int tuples
         Args:
             *arrs:
@@ -578,50 +660,28 @@ class GameModeBase(ABC):
             if isinstance(arrs[0], (List, Tuple)):
                 arrs = arrs[0]
             else:
-                return self._string_to_int(arrs[0])
+                return self.board.string_to_index(arrs[0])
 
         out = []
         for move in arrs:
-            x, y = self._string_to_int(move)
+            x, y = self.board.string_to_index(move)
             out.append((x, y))
         return out
-
-    def _string_to_int(self, move):
-        x, y = move.lower()
-        y = int(y) - 1
-        x = ord(x.lower()) - 97  # a=97,
-
-        if x < 0 or y < 0:
-            raise InvalidBoardIndexes("Field index is under 0!")
-        if x >= self.board.width or y >= self.board.height:
-            raise InvalidBoardIndexes(f"Field index is too high: x:{x} y:{y}")
-        return x, y
 
     def ints_to_strings(self, *arrs):
         """Use positional arguments for multiple positions"""
         if isinstance(arrs[0], (list, tuple, move_tuple, np.ndarray)):
-            out = [self._int_to_str(x, y) for x, y in arrs]
+            out = [self.board.index_to_str(x, y) for x, y in arrs]
             if len(out) == 1:
                 return out[0]
             return out
 
         elif len(arrs) == 1:
             x, y = arrs
-            return self._int_to_str(x, y)
+            return self.board.index_to_str(x, y)
 
         else:
             raise ValueError(f"Unrecognized type: {type(arrs[0])}")
-
-    def _int_to_str(self, x, y):
-        if x < 0 or y < 0:
-            raise InvalidBoardIndexes("Field index is under 0!")
-        if x >= self.board.width or y >= self.board.height:
-            raise InvalidBoardIndexes(f"Field index is too high: x:{x} y:{y}")
-
-        cols = self.board.columns
-        rows = self.board.rows
-        field_str = cols[x] + rows[y]
-        return field_str
 
     def new_game(self):
         self.__init__()
