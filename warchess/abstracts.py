@@ -145,18 +145,40 @@ class Position:
     relatives = ['relative', 'relative_f1', 'relative_f2']
 
     def __init__(self, key: str, pos):
-        """"""
+        """
+        Orientation
+
+            0
+          3   1
+            2
+        Args:
+            key:
+            pos:
+        """
 
         key = key.lower()
         self.key = key
+        if isinstance(pos, str):
+            pass
         self.pos = pos
+        self._ccp = None
+
+        self.orientation = 0  # Up white
 
         assert key in self.pos_keys, f"This key is not valid for pos: {key}"
 
+    @property
+    def ccp(self):
+        return self._ccp
+
+    @ccp.setter
+    def ccp(self, new_val):
+        self._ccp = new_val
+
     def get_ccp(self, board=None):
 
-        if self.ccp:
-            return self.ccp
+        if self._ccp:
+            return self._ccp
 
         if self.key in ['relative', 'relative_f1', 'relative_f2']:
             ccp = self.pos
@@ -167,24 +189,26 @@ class Position:
             x, y = self.pos
             ccp = x - 4, y - 4
 
-        self.ccp = ccp
+        self._ccp = ccp
         return ccp
 
-    def rotate_this(self, board, right=True):
+    def rotate_this(self, board, clockwise=True):
         pos = self.pos
         if self.key in ['relative', 'relative_f1', 'relative_f2']:
             "Relative moves do not need board. Center always in 0,0"
             h, w = 0, 0
         else:
             h, w = board.height, board.width
+            h -= 1
+            w -= 1
 
-        if right:
-            new_pos = ((y, h - x) for x, y in pos)
+        x, y = pos
+        if clockwise:
+            new_pos = (y, h - x)
         else:
-            new_pos = ((w - y, x) for x, y in pos)
+            new_pos = (w - y, x)
 
-        x, y = new_pos
-        assert x >= 0 and y >= 0, f"X and Y should be >=0, but got x:{x} y:{y}"
+        # assert x >= 0 and y >= 0, f"X and Y should be >=0, but got x:{x} y:{y}"
 
         self.pos = new_pos
 
@@ -195,11 +219,11 @@ class Position:
             "Relative moves do not need board. Center always in 0,0"
             w = 0
         else:
-            w = board.width
+            w = board.width-1
 
         new_pos = (w - x, y)
         x, y = new_pos
-        assert x >= 0 and y >= 0, f"X and Y should be >=0, but got x:{x} y:{y}"
+        # assert x >= 0 and y >= 0, f"X and Y should be >=0, but got x:{x} y:{y}"
         self.pos = new_pos
 
     def flip_this_by_y(self, board):
@@ -208,22 +232,22 @@ class Position:
             "Relative moves do not need board. Center always in 0,0"
             h = 0
         else:
-            h = board.height
+            h = board.height-1
 
         new_pos = (x, h - y)
         x, y = new_pos
-        assert x >= 0 and y >= 0, f"X and Y should be >=0, but got x:{x} y:{y}"
+        # assert x >= 0 and y >= 0, f"X and Y should be >=0, but got x:{x} y:{y}"
         self.pos = new_pos
 
     def get_position(self, f1, f2):
         pos_x, pos_y = self.pos
 
-        if self.key == 'relative_f1':
+        if self.key == 'relative' or self.key == 'relative_f1':
             x, y = f1
             pos = x + pos_x, pos_y + y
             return pos
 
-        elif self.key == 'relative' or self.key == 'relative_f2':
+        elif self.key == 'relative_f2':
             xx, yy = f2
             pos = xx + pos_x, yy + pos_y
             return pos
@@ -234,6 +258,14 @@ class Position:
             return self.pos
         else:
             raise NotImplementedError(f"Mode does not match: {self.key}")
+
+
+class PositionValidator(Position):
+
+    def is_position_valid(self, f1, f2):
+        pass
+
+        self.get_position()
 
 
 class RequiredFig:
@@ -279,28 +311,18 @@ class RequiredFig:
         return self.keys.get(key)
 
 
-# class RequiredPawnWhoRushed(RequiredFig):
-#     def req_team(self):
-#         return self.keys['enemy']
 #
-#     def req_type(self):
-#         return self.keys['same']
-#
-#     def req_status(self):
-#         return [{'rushed': True}]
+# req_rush_r = RequiredFig(
+#         req_type="P", req_status={"rushed": True},
+#         pos=('relative_f1', (1, 0)), req_team=RequiredFig.keys['enemy']
+# )
+# req_rush_r = RequiredFig(
+#         req_type="P", req_status={"rushed": True},
+#         pos=('relative_f1', (1, 0)), req_team=RequiredFig.keys['enemy']
+# )
 
 
-req_rush_r = RequiredFig(
-        req_type="P", req_status={"rushed": True},
-        pos=('relative_f1', (1, 0)), req_team=RequiredFig.keys['enemy']
-)
-req_rush_r = RequiredFig(
-        req_type="P", req_status={"rushed": True},
-        pos=('relative_f1', (1, 0)), req_team=RequiredFig.keys['enemy']
-)
-
-
-class SpecialVariant:
+class SpecialVariantBase:
     def __init__(self):
         self.pattern = None
         self.offset = (0, 0)  # Change when board is bigger or smaller
@@ -319,11 +341,11 @@ class SpecialVariant:
         pass
 
 
-class Rush(SpecialVariant):
+class Rush(SpecialVariantBase):
     def __init__(self):
         super().__init__()
 
-        self.pattern = (0, 2)
+        self.pattern = PositionValidator('relative', (0, 2))
 
 
 class SpecialBase(ABC):
@@ -374,18 +396,57 @@ class SpecialBase(ABC):
         return str(self)
 
 
+class TranslatorIndexString:
+    def __init__(self, width=8, height=8):
+        self.width = width
+        self.height = height
+
+    def text_to_int(self, text):
+        x, y = text.upper()
+        y = int(y) - 1
+        x = ord(x) - 65  # a=97, A=65
+
+        if x < 0 or y < 0:
+            raise InvalidBoardIndexes("Field index is under 0!")
+        if x >= self.width or y >= self.height:
+            raise InvalidBoardIndexes(f"Field index is too high: x:{x} y:{y}")
+        return x, y
+
+    def int_to_text(self, x, y):
+        if x < 0 or y < 0:
+            raise InvalidBoardIndexes("Field index is under 0!")
+        if x >= self.width or y >= self.height:
+            raise InvalidBoardIndexes(f"Field index is too high: x:{x} y:{y}")
+
+        X = chr(x + 65)
+        Y = str(y + 1)
+        field_str = f"{X}{Y}"
+        return field_str
+
+
 class BoardBase(ABC):
     """
     State and pieces on the board
     """
 
-    def __init__(self, width=8, height=8, extra_width=0, extra_height=0, extra_gap=0):
+    def __init__(
+            self, width=8, height=8,
+            left=0, right=0, bottom=0, top=0,
+            gap_vertical=0, gap_horizontal=0
+    ):
         self.width = width
         self.height = height
+        self.left = left
+        self.right = right
+        self.top = top
+        self.bottom = bottom
+        self.gap_vertical = gap_vertical
+        self.gap_horizontal = gap_horizontal
+
         self.figs_on_board = dict()
         self.teams = self._empty_2d_dict(2)
-        # self.kings = self._empty_2d_dict(2)
         self.colors = self._empty_2d_dict(2)
+        self.translator = TranslatorIndexString(width=width, height=height)
 
     def _empty_2d_dict(self, n=2):
         """Creates N dictionaries"""
@@ -393,10 +454,12 @@ class BoardBase(ABC):
 
     @property
     def columns(self):
-        return "ABCDEFGH"
+        letters = [chr(65 + n) for n in range(self.width)]
+        return "".join(letters)
 
     @property
     def rows(self):
+        letters = [n + 1 for n in range(self.height)]
         return "12345678"
 
     def add_figure(self, field, fig):
@@ -515,26 +578,10 @@ class BoardBase(ABC):
         print(text)
 
     def string_to_index(self, field):
-        x, y = field.lower()
-        y = int(y) - 1
-        x = ord(x.lower()) - 97  # a=97,
-
-        if x < 0 or y < 0:
-            raise InvalidBoardIndexes("Field index is under 0!")
-        if x >= self.width or y >= self.height:
-            raise InvalidBoardIndexes(f"Field index is too high: x:{x} y:{y}")
-        return x, y
+        return self.translator.text_to_int(field)
 
     def index_to_str(self, x, y):
-        if x < 0 or y < 0:
-            raise InvalidBoardIndexes("Field index is under 0!")
-        if x >= self.width or y >= self.height:
-            raise InvalidBoardIndexes(f"Field index is too high: x:{x} y:{y}")
-
-        cols = self.columns
-        rows = self.rows
-        field_str = cols[x] + rows[y]
-        return field_str
+        return self.translator.int_to_text(x, y)
 
 
 class Action:
