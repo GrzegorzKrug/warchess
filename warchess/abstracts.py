@@ -147,7 +147,6 @@ class Position:
     def __init__(self, key: str, pos):
         """
         Orientation
-
             0
           3   1
             2
@@ -159,7 +158,19 @@ class Position:
         key = key.lower()
         self.key = key
         if isinstance(pos, str):
-            pass
+            if key in self.relatives:
+                raise ValueError("Relative position must be tuple (x,y)")
+
+            if len(pos) == 2:
+                a, b = pos
+                y = int(b) - 1
+                x = ord(a.upper()) - 65
+                pos = x, y
+            elif len(pos) == 1:
+                raise NotImplementedError()
+            else:
+                raise ValueError("Field should have 2 Symbols")
+
         self.pos = pos
         self._ccp = None
 
@@ -192,6 +203,19 @@ class Position:
         self._ccp = ccp
         return ccp
 
+    def _decor_pos_validator(func):
+        def wrapper(self, board, *a, **kw):
+            out = func(self, board, *a, **kw)
+            x, y = out
+            assert 0 <= x < board.width, f"Width is higher then board or negative!: {x}"
+            assert 0 <= y < board.height, f"Height is higher then board or negative!: {y}"
+
+            self.pos = out
+            return out
+
+        return wrapper
+
+    @_decor_pos_validator
     def rotate_this(self, board, clockwise=True):
         pos = self.pos
         if self.key in ['relative', 'relative_f1', 'relative_f2']:
@@ -204,14 +228,16 @@ class Position:
 
         x, y = pos
         if clockwise:
+            "Right"
             new_pos = (y, h - x)
+            self.orientation = (self.orientation + 1) % 4
         else:
             new_pos = (w - y, x)
+            self.orientation = (self.orientation - 1) % 4
 
-        # assert x >= 0 and y >= 0, f"X and Y should be >=0, but got x:{x} y:{y}"
+        return new_pos
 
-        self.pos = new_pos
-
+    @_decor_pos_validator
     def flip_this_by_x(self, board):
         x, y = self.pos
 
@@ -219,27 +245,26 @@ class Position:
             "Relative moves do not need board. Center always in 0,0"
             w = 0
         else:
-            w = board.width-1
+            w = board.width - 1
 
         new_pos = (w - x, y)
-        x, y = new_pos
-        # assert x >= 0 and y >= 0, f"X and Y should be >=0, but got x:{x} y:{y}"
-        self.pos = new_pos
+        self.orientation = (self.orientation + 2) % 4
+        return new_pos
 
+    @_decor_pos_validator
     def flip_this_by_y(self, board):
         x, y = self.pos
         if self.key in ['relative', 'relative_f1', 'relative_f2']:
             "Relative moves do not need board. Center always in 0,0"
             h = 0
         else:
-            h = board.height-1
+            h = board.height - 1
 
         new_pos = (x, h - y)
-        x, y = new_pos
-        # assert x >= 0 and y >= 0, f"X and Y should be >=0, but got x:{x} y:{y}"
-        self.pos = new_pos
+        self.orientation = (self.orientation + 2) % 4
+        return new_pos
 
-    def get_position(self, f1, f2):
+    def get_position(self, f1, f2, board=None):
         pos_x, pos_y = self.pos
 
         if self.key == 'relative' or self.key == 'relative_f1':
@@ -253,7 +278,19 @@ class Position:
             return pos
 
         elif self.key == 'classic':
-            return self.pos
+            if board is None:
+                raise ValueError("Need board object for this operation")
+
+            if pos_x > 3:
+                pos_x += board.gap_horizontal
+            if pos_y > 3:
+                pos_y += board.gap_vertical
+
+            l = board.left
+            b = board.bottom
+            pos = pos_x + l, pos_y + b
+
+            return pos
         elif self.key == 'absolute':
             return self.pos
         else:

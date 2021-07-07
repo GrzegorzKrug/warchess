@@ -133,7 +133,7 @@ def test_Position_class_4_valid_vals():
         assert p == pos.get_position(p, (0, 0)), "This is valid move"
 
         pos = Position('classic', p)
-        assert p == pos.get_position(p, (0, 0)), "This is valid move"
+        assert p == pos.get_position(p, (0, 0), board=board), "This is valid move"
 
 
 def test_Position_class_4_Valid_strings():
@@ -141,7 +141,7 @@ def test_Position_class_4_Valid_strings():
     check = [
             "A1",
             "A2",
-            "A5"
+            "A5",
             "A8",
             "B1",
             "B5",
@@ -156,10 +156,11 @@ def test_Position_class_4_Valid_strings():
         p = board.string_to_index(txt)
 
         pos = Position('absolute', txt)
-        assert p == pos.get_position((1, 2), (0, 0)), "This is valid move"
+        ret = pos.get_position((1, 2), (0, 0))
+        assert p == ret, f"Field: {txt}, Expected: {p}, got {ret}"
 
         pos = Position('classic', txt)
-        assert p == pos.get_position((1, 2), (0, 0)), "This is valid move"
+        assert p == pos.get_position((1, 2), (0, 0), board=board), "This is valid move"
 
 
 def test_Position_class_4_Valid_biggerBoard():
@@ -169,7 +170,7 @@ def test_Position_class_4_Valid_biggerBoard():
     strings = [
             "A1",
             "A2",
-            "A5"
+            "A5",
             "A8",
             "B1",
             "B5",
@@ -199,12 +200,14 @@ def test_Position_class_4_Valid_biggerBoard():
                 p = val
 
             pos = Position('absolute', val)
-            assert p == pos.get_position((1, 2), (0, 0)), "This is valid move"
+            ret = pos.get_position((1, 2), (0, 0))
+            assert p == ret, f"Field: {val}, Expected: {p}, got {ret}"
 
             pos = Position('classic', val)
             px, py = p
             p = px + left, py + bottom
-            assert p == pos.get_position((1, 2), (0, 0)), "This is valid move"
+            ret = pos.get_position((1, 2), (0, 0), board=board)
+            assert p == ret, f"Field: {val}, Expected: {p}, got {ret}"
 
 
 def test_Position_class_4_Valid_Board_Gap():
@@ -215,7 +218,7 @@ def test_Position_class_4_Valid_Board_Gap():
     strings = [
             "A1",
             "A2",
-            "A5"
+            "A5",
             "A8",
             "B1",
             "B5",
@@ -255,7 +258,8 @@ def test_Position_class_4_Valid_Board_Gap():
                 py += vert
 
             p = px, py
-            assert p == pos.get_position((1, 2), (0, 0)), "This is valid move"
+            ret = pos.get_position((1, 2), (0, 0), board=board)
+            assert p == ret, f"Field: {val}, Expected: {p}, got {ret}"
 
 
 def test_Position_class_5_():
