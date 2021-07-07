@@ -142,6 +142,7 @@ class Position:
             'relative', 'relative_f1', 'relative_f2',
             'absolute', 'classic', 'any'
     ]
+    relatives = ['relative', 'relative_f1', 'relative_f2']
 
     def __init__(self, key: str, pos):
         """"""
@@ -152,37 +153,87 @@ class Position:
 
         assert key in self.pos_keys, f"This key is not valid for pos: {key}"
 
-    def get_ccp(self, board):
-        ccp = 0, 1
+    def get_ccp(self, board=None):
+
+        if self.ccp:
+            return self.ccp
+
+        if self.key in ['relative', 'relative_f1', 'relative_f2']:
+            ccp = self.pos
+        elif self.key == 'absolute':
+            raise NotImplementedError("Only classic board is supported")
+        else:
+            "Classic"
+            x, y = self.pos
+            ccp = x - 4, y - 4
+
+        self.ccp = ccp
         return ccp
 
-    def get_pos_from_ccp(self, board, ccp):
-        return 0, 1
-
     def rotate_this(self, board, right=True):
-        ccp = self.get_ccp(board)
-        if right:
-            new_ccp = ((y, -x) for x, y in ccp)
+        pos = self.pos
+        if self.key in ['relative', 'relative_f1', 'relative_f2']:
+            "Relative moves do not need board. Center always in 0,0"
+            h, w = 0, 0
         else:
-            new_ccp = ((-y, x) for x, y in ccp)
+            h, w = board.height, board.width
 
-        pos = self.get_pos_from_ccp(board, new_ccp)
-        self.pos = pos
+        if right:
+            new_pos = ((y, h - x) for x, y in pos)
+        else:
+            new_pos = ((w - y, x) for x, y in pos)
+
+        x, y = new_pos
+        assert x >= 0 and y >= 0, f"X and Y should be >=0, but got x:{x} y:{y}"
+
+        self.pos = new_pos
 
     def flip_this_by_x(self, board):
-        x, y = self.get_ccp()
-        new_ccp = (-x, y)
-        pos = self.get_pos_from_ccp(board, new_ccp)
-        self.pos = pos
+        x, y = self.pos
+
+        if self.key in ['relative', 'relative_f1', 'relative_f2']:
+            "Relative moves do not need board. Center always in 0,0"
+            w = 0
+        else:
+            w = board.width
+
+        new_pos = (w - x, y)
+        x, y = new_pos
+        assert x >= 0 and y >= 0, f"X and Y should be >=0, but got x:{x} y:{y}"
+        self.pos = new_pos
 
     def flip_this_by_y(self, board):
-        x, y = self.get_ccp()
-        new_ccp = (x, -y)
-        pos = self.get_pos_from_ccp(board, new_ccp)
-        self.pos = pos
+        x, y = self.pos
+        if self.key in ['relative', 'relative_f1', 'relative_f2']:
+            "Relative moves do not need board. Center always in 0,0"
+            h = 0
+        else:
+            h = board.height
 
-    def get_value(self, board, f1, f2):
-        pass
+        new_pos = (x, h - y)
+        x, y = new_pos
+        assert x >= 0 and y >= 0, f"X and Y should be >=0, but got x:{x} y:{y}"
+        self.pos = new_pos
+
+    def get_position(self, f1, f2):
+        pos_x, pos_y = self.pos
+
+        if self.key == 'relative_f1':
+            x, y = f1
+            pos = x + pos_x, pos_y + y
+            return pos
+
+        elif self.key == 'relative' or self.key == 'relative_f2':
+            xx, yy = f2
+            pos = xx + pos_x, yy + pos_y
+            return pos
+
+        elif self.key == 'classic':
+            return self.pos
+        elif self.key == 'absolute':
+            return self.pos
+        else:
+            raise NotImplementedError(f"Mode does not match: {self.key}")
 
 
 class RequiredFig:
