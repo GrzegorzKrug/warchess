@@ -207,8 +207,11 @@ class Position:
         def wrapper(self, board, *a, **kw):
             out = func(self, board, *a, **kw)
             x, y = out
-            assert 0 <= x < board.width, f"Width is higher then board or negative!: {x}"
-            assert 0 <= y < board.height, f"Height is higher then board or negative!: {y}"
+            if x is not None:
+                assert 0 <= x < board.width, f"Width is higher then board or negative!: {x}"
+
+            if y is not None:
+                assert 0 <= y < board.height, f"Height is higher then board or negative!: {y}"
 
             self.pos = out
             return out
@@ -229,10 +232,10 @@ class Position:
         x, y = pos
         if clockwise:
             "Right"
-            new_pos = (y, h - x)
+            new_pos = (y, x if x is None else h - x)
             self.orientation = (self.orientation + 1) % 4
         else:
-            new_pos = (w - y, x)
+            new_pos = (y if y is None else w - y, x)
             self.orientation = (self.orientation - 1) % 4
 
         return new_pos
@@ -247,7 +250,9 @@ class Position:
         else:
             w = board.width - 1
 
-        new_pos = (w - x, y)
+        new_x = None if x is None else w - x
+        new_y = y
+        new_pos = new_x, new_y
         self.orientation = (self.orientation + 2) % 4
         return new_pos
 
@@ -260,7 +265,9 @@ class Position:
         else:
             h = board.height - 1
 
-        new_pos = (x, h - y)
+        new_x = x
+        new_y = None if y is None else h - y
+        new_pos = new_x, new_y
         self.orientation = (self.orientation + 2) % 4
         return new_pos
 
@@ -295,14 +302,6 @@ class Position:
             return self.pos
         else:
             raise NotImplementedError(f"Mode does not match: {self.key}")
-
-
-class PositionValidator(Position):
-
-    def is_position_valid(self, f1, f2):
-        pass
-
-        self.get_position()
 
 
 class RequiredFig:

@@ -262,8 +262,35 @@ def test_Position_class_4_Valid_Board_Gap():
             assert p == ret, f"Field: {val}, Expected: {p}, got {ret}"
 
 
-def test_Position_class_5_():
-    pass
+def test_Position_class_5_Nones():
+    board = BoardBase()
+    pos = Position("Absolute", (None, 7))
+
+    "Assert Flips"
+    pos.flip_this_by_x(board)
+    assert pos.pos == (None, 7)
+    pos.flip_this_by_y(board)
+    assert pos.pos == (None, 0)
+
+    "Assert Rotations"
+    pos = Position("Absolute", (None, 7))
+    pos.rotate_this(board)
+    assert pos.pos == (7, None)
+    pos.rotate_this(board)
+    assert pos.pos == (None, 0)
+    pos.rotate_this(board)
+    assert pos.pos == (0, None)
+
+    "Assert counter rotation"
+    pos = Position("Absolute", (None, 6))
+    pos.rotate_this(board, clockwise=False)
+    assert pos.pos == (1, None)
+    pos.rotate_this(board, clockwise=False)
+    assert pos.pos == (None, 1)
+    pos.rotate_this(board, clockwise=False)
+    assert pos.pos == (6, None)
+    pos.rotate_this(board, clockwise=False)
+    assert pos.pos == (None, 6)
 
 
 def test_Position_class_6_():
@@ -274,8 +301,8 @@ def test_5_():
     pass
 
 
-def test_6_():
-    pass
+def test_6_Position_Flip_Absolte_Gap():
+    raise NotImplementedError()
 
 
 def test_7_():
