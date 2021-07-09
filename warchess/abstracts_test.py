@@ -1,7 +1,7 @@
 import pytest
 
 from abstracts import BoardBase
-from abstracts import RequiredFig, Position
+from abstracts import RequiredFig, Pattern
 
 
 def test_1_req_figure():
@@ -18,17 +18,20 @@ def test_2_ccp():
     )
 
 
-def test_3_():
+def test_3_flip_required_object():
     req_rush_r = RequiredFig(
             req_type="P", req_status={"rushed": True},
             pos=('relative_f1', (1, 0)), req_team=RequiredFig.keys['enemy']
     )
-    req_rush_r.flip()
+    req_rush_r.flip_by_x()
+    req_rush_r.flip_by_y()
+    req_rush_r.rotate()
+    req_rush_r.rotate(clockwise=False)
 
 
 def test_Position_change_FLIP_ROTATE_Classic_Board():
     board = BoardBase()
-    pos = Position('absolute', (1, 0))
+    pos = Pattern('absolute', (1, 0))
 
     pos.flip_this_by_x(board)
     assert pos.pos == (6, 0)
@@ -41,7 +44,7 @@ def test_Position_change_FLIP_ROTATE_Classic_Board():
     assert pos.pos == (6, 7)
 
     "Clockwise"
-    pos = Position('absolute', (1, 0))
+    pos = Pattern('absolute', (1, 0))
     pos.rotate_this(board)
     assert pos.pos == (0, 6)
     pos.rotate_this(board)
@@ -52,7 +55,7 @@ def test_Position_change_FLIP_ROTATE_Classic_Board():
     assert pos.pos == (1, 0)
 
     "Counter Clockwise"
-    pos = Position('absolute', (2, 1))
+    pos = Pattern('absolute', (2, 1))
     pos.rotate_this(board, clockwise=False)
     assert pos.pos == (6, 2)
     pos.rotate_this(board, clockwise=False)
@@ -64,24 +67,24 @@ def test_Position_change_FLIP_ROTATE_Classic_Board():
 
 
 def test_Position_class_1_good():
-    pos = Position('classic', "A5")
-    pos = Position('absolute', "A5")
+    pos = Pattern('classic', "A5")
+    pos = Pattern('absolute', "A5")
 
-    pos = Position('classic', (0, 1))
-    pos = Position('absolute', (0, 1))
+    pos = Pattern('classic', (0, 1))
+    pos = Pattern('absolute', (0, 1))
 
-    pos = Position('relative', (0, 1))
-    pos = Position('relative_f1', (0, 1))
-    pos = Position('relative_f2', (0, 1))
+    pos = Pattern('relative', (0, 1))
+    pos = Pattern('relative_f1', (0, 1))
+    pos = Pattern('relative_f2', (0, 1))
 
 
 def test_Position_class_2_bad():
     with pytest.raises(ValueError):
-        pos = Position('relative', "A2")
+        pos = Pattern('relative', "A2")
     with pytest.raises(ValueError):
-        pos = Position('relative_f1', "A2")
+        pos = Pattern('relative_f1', "A2")
     with pytest.raises(ValueError):
-        pos = Position('relative_f2', "A2")
+        pos = Pattern('relative_f2', "A2")
 
 
 def test_Position_class_3_ccp_vals():
@@ -97,11 +100,11 @@ def test_Position_class_3_ccp_vals():
             (8, 5),
     ]
     for p in check:
-        pos = Position('relative', p)
+        pos = Pattern('relative', p)
         assert pos.get_ccp(board) == p
-        pos = Position('relative_f1', p)
+        pos = Pattern('relative_f1', p)
         assert pos.get_ccp(board) == p
-        pos = Position('relative_f2', p)
+        pos = Pattern('relative_f2', p)
         assert pos.get_ccp(board) == p
 
 
@@ -120,19 +123,19 @@ def test_Position_class_4_valid_vals():
             # (3, None),
     ]
     for p in check:
-        pos = Position('relative', p)
+        pos = Pattern('relative', p)
         assert p == pos.get_position((0, 0), p), "This is valid move"
 
-        pos = Position('relative_f1', p)
+        pos = Pattern('relative_f1', p)
         assert p == pos.get_position((0, 0), p), "This is valid move"
 
-        pos = Position('relative_f2', p)
+        pos = Pattern('relative_f2', p)
         assert p == pos.get_position(p, (0, 0)), "This is valid move"
 
-        pos = Position('absolute', p)
+        pos = Pattern('absolute', p)
         assert p == pos.get_position(p, (0, 0)), "This is valid move"
 
-        pos = Position('classic', p)
+        pos = Pattern('classic', p)
         assert p == pos.get_position(p, (0, 0), board=board), "This is valid move"
 
 
@@ -155,11 +158,11 @@ def test_Position_class_4_Valid_strings():
     for txt in check:
         p = board.string_to_index(txt)
 
-        pos = Position('absolute', txt)
+        pos = Pattern('absolute', txt)
         ret = pos.get_position((1, 2), (0, 0))
         assert p == ret, f"Field: {txt}, Expected: {p}, got {ret}"
 
-        pos = Position('classic', txt)
+        pos = Pattern('classic', txt)
         assert p == pos.get_position((1, 2), (0, 0), board=board), "This is valid move"
 
 
@@ -199,11 +202,11 @@ def test_Position_class_4_Valid_biggerBoard():
             else:
                 p = val
 
-            pos = Position('absolute', val)
+            pos = Pattern('absolute', val)
             ret = pos.get_position((1, 2), (0, 0))
             assert p == ret, f"Field: {val}, Expected: {p}, got {ret}"
 
-            pos = Position('classic', val)
+            pos = Pattern('classic', val)
             px, py = p
             p = px + left, py + bottom
             ret = pos.get_position((1, 2), (0, 0), board=board)
@@ -247,10 +250,10 @@ def test_Position_class_4_Valid_Board_Gap():
             else:
                 p = val
 
-            pos = Position('absolute', val)
+            pos = Pattern('absolute', val)
             assert p == pos.get_position((1, 2), (0, 0)), "This is valid move"
 
-            pos = Position('classic', val)
+            pos = Pattern('classic', val)
             px, py = p
             if px > 3:
                 px += horiz
@@ -264,7 +267,7 @@ def test_Position_class_4_Valid_Board_Gap():
 
 def test_Position_class_5_Nones():
     board = BoardBase()
-    pos = Position("Absolute", (None, 7))
+    pos = Pattern("Absolute", (None, 7))
 
     "Assert Flips"
     pos.flip_this_by_x(board)
@@ -273,7 +276,7 @@ def test_Position_class_5_Nones():
     assert pos.pos == (None, 0)
 
     "Assert Rotations"
-    pos = Position("Absolute", (None, 7))
+    pos = Pattern("Absolute", (None, 7))
     pos.rotate_this(board)
     assert pos.pos == (7, None)
     pos.rotate_this(board)
@@ -282,7 +285,7 @@ def test_Position_class_5_Nones():
     assert pos.pos == (0, None)
 
     "Assert counter rotation"
-    pos = Position("Absolute", (None, 6))
+    pos = Pattern("Absolute", (None, 6))
     pos.rotate_this(board, clockwise=False)
     assert pos.pos == (1, None)
     pos.rotate_this(board, clockwise=False)

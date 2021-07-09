@@ -137,7 +137,7 @@ Problem that I must solve:
 """
 
 
-class Position:
+class Pattern:
     pos_keys = [
             'relative', 'relative_f1', 'relative_f2',
             'absolute', 'classic', 'any'
@@ -303,6 +303,9 @@ class Position:
         else:
             raise NotImplementedError(f"Mode does not match: {self.key}")
 
+    def is_pattern_valid(self):
+        pass
+
 
 class RequiredFig:
     """
@@ -311,13 +314,12 @@ class RequiredFig:
     Key -2 Opposite
     """
     keys = {
-            "any": 0,
-            "same": -1,
-            "other": -2,
-            "enemy": -2,
-            "opposite": -2,
-            "None": -3,
-            "none": -3,
+            "any": -1,
+            "same": -2,
+            "enemy": -3,
+            "other": -3,
+            # "None": -4,
+            # "none": -4,
     }
     inv_keys = {v: k for k, v in keys.items()}
 
@@ -327,9 +329,9 @@ class RequiredFig:
                  pos: tuple = None,
                  ):
 
-        self.req_team = req_team
-        self.req_color = req_color
         self.req_type = req_type
+        self.req_color = req_color
+        self.req_team = req_team
 
         if req_status:
             assert isinstance(req_status, (dict,)), f"Status must be dict, but got {type(req_status)}"
@@ -338,10 +340,45 @@ class RequiredFig:
             self.req_status = {}
 
         k, p = pos
-        self.req_pos = Position(k, p)
+        self.position = Pattern(k, p)
 
-    def check_pos(self, board, posf1, posf2):
-        pass
+    def check_pos(self, parent, posf1, posf2, board):
+        pos = self.position.get_position(posf1, posf2, board)
+        fig = board.get(pos)
+        return self.check_requirements(parent, fig)
+
+    def check_requirements(self, parent: FigureBase, fig: FigureBase):
+        """"""
+        "Required empty"
+        if self.req_type is None and fig is None:
+            return True
+
+        "Check if fig type is desired"
+        if not self._compare_properties(self.req_type, type(parent), type(fig)):
+            return False
+        "Check if fig color is desired"
+        if not self._compare_properties(self.req_color, parent.color, fig.color):
+            return False
+        "Check if fig team is desired"
+        if not self._compare_properties(self.req_team, parent.team, fig.team):
+            return False
+
+        "Check required status fields"
+        for k, v in self.req_status.items():
+            if not fig[k] == v:
+                return False
+        return True
+
+    @staticmethod
+    def _compare_properties(key, val1, val2):
+        if key == -1:
+            return True
+        elif key == -2:
+            return val1 == val2
+        elif key == -3:
+            return val1 != val2
+        else:
+            return key == val2
 
     def get_key_val(self, key):
         return self.keys.get(key)
