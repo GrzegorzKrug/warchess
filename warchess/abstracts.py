@@ -188,8 +188,30 @@ class Pattern:
                 y = int(b) - 1
                 x = ord(a.upper()) - 65
                 pos = x, y
-            elif len(pos) == 1:
-                raise NotImplementedError()
+            elif len(pos) > 0:
+                str_x = ''
+                str_y = ''
+                # pos = pos.strip()
+                for sym in pos:
+                    n = ord(sym)
+                    "Zero excluded, 0 = chr(48)"
+                    if 49 <= n <= 57:
+                        str_y += sym
+                    else:
+                        str_x += sym
+
+                if len(str_x) > 1:
+                    raise NotImplementedError("Not working with more than 10 X labels")
+                elif len(str_x) <= 0:
+                    x = None
+                else:
+                    x = ord(str_x.upper()) - 65
+                if len(str_y) <= 0:
+                    y = None
+                else:
+                    y = int(str_y) - 1
+                pos = x, y
+
             else:
                 raise ValueError("Field should have 2 Symbols")
 
@@ -202,6 +224,7 @@ class Pattern:
 
     @property
     def ccp(self):
+        """Center coordinate position"""
         return self._ccp
 
     @ccp.setter
@@ -295,7 +318,7 @@ class Pattern:
         self.orientation = (self.orientation + 2) % 4
         return new_pos
 
-    def get_position(self, f1, f2, board=None):
+    def get_ref_position(self, f1, f2, board=None):
         pos_x, pos_y = self.pos
 
         if self.key == 'relative' or self.key == 'relative_f1':
@@ -312,14 +335,16 @@ class Pattern:
             if board is None:
                 raise ValueError("Need board object for this operation")
 
-            if pos_x > 3:
-                pos_x += board.gap_horizontal
-            if pos_y > 3:
-                pos_y += board.gap_vertical
+            if pos_x:
+                if pos_x > 3:
+                    pos_x += board.gap_horizontal
+                pos_x += board.left
+            if pos_y:
+                if pos_y > 3:
+                    pos_y += board.gap_vertical
+                pos_y += board.bottom
 
-            l = board.left
-            b = board.bottom
-            pos = pos_x + l, pos_y + b
+            pos = pos_x, pos_y
 
             return pos
         elif self.key == 'absolute':
@@ -327,8 +352,22 @@ class Pattern:
         else:
             raise NotImplementedError(f"Mode does not match: {self.key}")
 
-    def is_pattern_valid(self):
-        pass
+    def match_pattern(self, f1, f2, board):
+        if self.key in self.relatives:
+            dx = f2[0] - f1[0]
+            dy = f2[1] - f1[1]
+            diff = dx, dy
+            return self.pos == diff
+        else:
+            px, py = self.get_ref_position(f1, f2, board)
+            if px and px != f2[0]:
+                return False
+            if py and py != f2[1]:
+                return False
+            return True
+
+    def __eq__(self, other):
+        return self.pos == other
 
 
 class RequiredFig:
@@ -442,7 +481,7 @@ class Rush(SpecialVariantBase):
     def __init__(self):
         super().__init__()
 
-        self.pattern = PositionValidator('relative', (0, 2))
+        self.pattern = Pattern('relative', (0, 2))
 
 
 class SpecialBase(ABC):
@@ -697,9 +736,10 @@ class Action:
 
 
 class GameModeBase(ABC):
+    players_num = 2
+
     def __init__(self):
         self.board = BoardBase()
-        self.players_num = 2
         self.current_player_turn = 0
         self.last_hit = 0  # Moves from last hit
         self.move_count = 0  # Move counter

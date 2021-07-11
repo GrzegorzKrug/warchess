@@ -2,7 +2,7 @@ import pytest
 
 from classes import Rook, Pawn, Knight, Queen, King, Bishop, ClassicGame
 from classes import FigureFactory
-from abstracts import InvalidMove
+from abstracts import InvalidMove, Pattern, BoardBase
 
 
 def test_1_():
@@ -1055,7 +1055,7 @@ def test_26_check_rush_status():
     # assert g._is_move_valid(*g.strings_to_ints("d5", "
 
 
-def test_27_enpasannt_and_check():
+def test_27_enpassant_and_check():
     g = ClassicGame()
     g.load_fen("rnbqkrb1/1pppp1pp/8/5P2/8/8/1PP1PKPP/RNBQ1BNR b q - 0 1")
     g.board.print_board()
@@ -1067,7 +1067,7 @@ def test_27_enpasannt_and_check():
     g.make_move_from_str("f5", "f6")
 
 
-def test_27_enpasannt_and_check2():
+def test_27_enpassant_and_check2():
     g = ClassicGame()
     g.load_fen("rnbqk1r1/1pppp1pp/8/5P2/8/8/1PP1P1KP/RNBQ1BNR b q - 0 1")
     g.board.print_board()
@@ -1078,7 +1078,7 @@ def test_27_enpasannt_and_check2():
     # g.make_move_from_str("f5", "f6"
 
 
-def test_27_enpasannt_and_check3():
+def test_27_enpassant_and_check3():
     g = ClassicGame()
     g.load_fen("rnbqk1r1/1pp1p1pp/8/5P2/8/7K/1PP1P2P/RNBQ1BNR b q - 0 1")
     g.board.print_board()
@@ -1091,22 +1091,25 @@ def test_27_enpasannt_and_check3():
         g.make_move_from_str("f5", "f6")
 
 
-def test_28_Figure_Factory_1():
+def test_28_FigureFactory_1():
     key = 'Unit1'
     FigureFactory.add_fig('test', key, Pawn)
     fig1 = FigureFactory.get_fig('test', key, 0)
     fig2 = FigureFactory.get_fig('test', 'UNIT1', 1)
     fig3 = FigureFactory.get_abstract_fig('test', 'unit1')
+    fig4 = FigureFactory.get_fig('test', key, 0)
 
     with pytest.raises(KeyError):
-        fig4 = FigureFactory.get_fig('test', 'unit_3', 3)
+        fig5 = FigureFactory.get_fig('test', 'unit_3', 3)
     with pytest.raises(KeyError):
-        fig4 = FigureFactory.get_abstract_fig('test', 'unit_3')
+        fig5 = FigureFactory.get_abstract_fig('test', 'unit_3')
 
-    assert fig1 == fig3
+    assert type(fig1) == type(fig2)
+    assert type(fig1) is fig3
+    assert type(fig1) is type(fig4)
 
 
-def test_28_Figure_Factory_2():
+def test_28_FigureFactory_2():
     fig1 = FigureFactory.get_fig('classic', "Pawn", 0)
     fig2 = FigureFactory.get_fig('classic', "Rook", 0)
     pw_abs = FigureFactory.get_abstract_fig('classic', 'Pawn')
@@ -1115,7 +1118,7 @@ def test_28_Figure_Factory_2():
     assert not type(fig2) == pw_abs
 
 
-def test_28_Figure_Factory_3():
+def test_28_FigureFactory_3():
     assert FigureFactory.get_abstract_fig("classic", "Pawn") == Pawn
     assert FigureFactory.get_abstract_fig("classic", "Bishop") == Bishop
     assert FigureFactory.get_abstract_fig("classic", "Knight") == Knight
@@ -1124,7 +1127,7 @@ def test_28_Figure_Factory_3():
     assert FigureFactory.get_abstract_fig("classic", "King") == King
 
 
-def test_28_Figure_Factory_4():
+def test_28_FigureFactory_4():
     assert FigureFactory.find_fig_key_by_str("classic", "P") == ("classic", "pawn")
     assert FigureFactory.find_fig_key_by_str("classic", "B") == ("classic", "bishop")
     assert FigureFactory.find_fig_key_by_str("classic", "N") == ("classic", "knight")
@@ -1133,7 +1136,7 @@ def test_28_Figure_Factory_4():
     assert FigureFactory.find_fig_key_by_str("classic", "K") == ("classic", "king")
 
 
-def test_28_Figure_Factory_5():
+def test_28_FigureFactory_5():
     pw1 = FigureFactory.get_fig('classic', 'Pawn', 0)
     pw2 = FigureFactory.get_fig('classic', 'Pawn', 1)
     pw3 = FigureFactory.get_fig('classic', 'Pawn', 2)
@@ -1157,5 +1160,78 @@ def test_28_Figure_Factory_4_flip_specials():
     pass
 
 
-def test_28_Figure_Factory_5():
-    pass
+def test_29_Pattern_Check_Initialization():
+    # g = ClassicGame()
+    board = BoardBase()
+
+    f1 = (1, 1)
+    f2 = (2, 2)
+    f2_wrong = (4, 4)
+
+    pos = Pattern('absolute', "C3")
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f2_wrong, board)
+
+    pos = Pattern('absolute', "3")
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f2_wrong, board)
+
+    pos = Pattern('absolute', "c")
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f2_wrong, board)
+
+
+def test_29_Pattern_Check_Initialization_classic():
+    board = BoardBase(left=3, bottom=3)
+    f1 = (1, 1)
+    f2 = (2 + 3, 2 + 3)
+    f2_wrong = (1, 1)
+
+    pos = Pattern('classic', "C3")
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f2_wrong, board)
+
+    pos = Pattern('classic', "3")
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f2_wrong, board)
+
+    pos = Pattern('classic', "c")
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f2_wrong, board)
+
+
+def test_29_Pattern_1_Check_Comparison():
+    move = (-3, -1)
+    wrong = (0, 3)
+    pos = Pattern('relative', move)
+
+    assert pos == move
+    assert move == pos
+    assert not wrong == pos
+    assert not pos == wrong
+
+    assert not pos != move
+    assert not move != pos
+    assert wrong != pos
+    assert pos != wrong
+
+
+def test_29_Pattern_2_Check_valid():
+    move = (2, 3)
+    pos = Pattern('relative', move)
+
+    f1 = (0, 1)
+    f2 = (2, 4)
+    wrong_s = [
+            (2, 3),
+            (0, 3),
+            (0, 0),
+            (0, 1),
+    ]
+
+    g = ClassicGame()
+    board = g.board
+
+    assert pos.match_pattern(f1, f2, board)
+    for wrg in wrong_s:
+        assert not pos.match_pattern(f1, wrg, board), f"Not valid move: {f1} -> {wrg}"
