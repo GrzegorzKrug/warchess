@@ -335,11 +335,11 @@ class Pattern:
             if board is None:
                 raise ValueError("Need board object for this operation")
 
-            if pos_x:
+            if pos_x is not None:
                 if pos_x > 3:
                     pos_x += board.gap_horizontal
                 pos_x += board.left
-            if pos_y:
+            if pos_y is not None:
                 if pos_y > 3:
                     pos_y += board.gap_vertical
                 pos_y += board.bottom
@@ -356,8 +356,14 @@ class Pattern:
         if self.key in self.relatives:
             dx = f2[0] - f1[0]
             dy = f2[1] - f1[1]
-            diff = dx, dy
-            return self.pos == diff
+            px, py = self.pos
+            if px and px != dx:
+                return False
+            if py and py != dy:
+                return False
+
+            return True
+            # return self.pos == diff
         else:
             px, py = self.get_ref_position(f1, f2, board)
             if px and px != f2[0]:

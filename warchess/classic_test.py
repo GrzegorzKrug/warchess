@@ -1200,6 +1200,30 @@ def test_29_Pattern_Check_Initialization_classic():
     assert not pos.match_pattern(f1, f2_wrong, board)
 
 
+def test_29_Pattern_Check_incorrect_init_with_any_col_row():
+    board = BoardBase(left=3, bottom=3)
+    f1 = (1, 1)
+    f2 = (3, 3)
+    f2_wrong = (2, 2)
+
+    pos = Pattern('relative', (2, 2))
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f2_wrong, board)
+
+    pos = Pattern('relative', (None, 2))
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f2_wrong, board)
+
+    pos = Pattern('relative', (2, None))
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f2_wrong, board)
+
+    with pytest.raises(ValueError):
+        pos = Pattern('relative', "A")
+    with pytest.raises(ValueError):
+        pos = Pattern('relative', "6")
+
+
 def test_29_Pattern_1_Check_Comparison():
     move = (-3, -1)
     wrong = (0, 3)

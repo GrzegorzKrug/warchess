@@ -155,19 +155,19 @@ def test_Position_class_4_valid_vals():
     ]
     for p in check:
         pos = Pattern('relative', p)
-        assert p == pos.get_position((0, 0), p), "This is valid move"
+        assert p == pos.get_ref_position((0, 0), p), "This is valid move"
 
         pos = Pattern('relative_f1', p)
-        assert p == pos.get_position((0, 0), p), "This is valid move"
+        assert p == pos.get_ref_position((0, 0), p), "This is valid move"
 
         pos = Pattern('relative_f2', p)
-        assert p == pos.get_position(p, (0, 0)), "This is valid move"
+        assert p == pos.get_ref_position(p, (0, 0)), "This is valid move"
 
         pos = Pattern('absolute', p)
-        assert p == pos.get_position(p, (0, 0)), "This is valid move"
+        assert p == pos.get_ref_position(p, (0, 0)), "This is valid move"
 
         pos = Pattern('classic', p)
-        assert p == pos.get_position(p, (0, 0), board=board), "This is valid move"
+        assert p == pos.get_ref_position(p, (0, 0), board=board), "This is valid move"
 
 
 def test_Position_class_4_Valid_strings():
@@ -190,11 +190,11 @@ def test_Position_class_4_Valid_strings():
         p = board.string_to_index(txt)
 
         pos = Pattern('absolute', txt)
-        ret = pos.get_position((1, 2), (0, 0))
+        ret = pos.get_ref_position((1, 2), (0, 0))
         assert p == ret, f"Field: {txt}, Expected: {p}, got {ret}"
 
         pos = Pattern('classic', txt)
-        assert p == pos.get_position((1, 2), (0, 0), board=board), "This is valid move"
+        assert p == pos.get_ref_position((1, 2), (0, 0), board=board), "This is valid move"
 
 
 def test_Position_class_4_Valid_biggerBoard():
@@ -234,13 +234,13 @@ def test_Position_class_4_Valid_biggerBoard():
                 p = val
 
             pos = Pattern('absolute', val)
-            ret = pos.get_position((1, 2), (0, 0))
+            ret = pos.get_ref_position((1, 2), (0, 0))
             assert p == ret, f"Field: {val}, Expected: {p}, got {ret}"
 
             pos = Pattern('classic', val)
             px, py = p
             p = px + left, py + bottom
-            ret = pos.get_position((1, 2), (0, 0), board=board)
+            ret = pos.get_ref_position((1, 2), (0, 0), board=board)
             assert p == ret, f"Field: {val}, Expected: {p}, got {ret}"
 
 
@@ -282,7 +282,7 @@ def test_Position_class_4_Valid_Board_Gap():
                 p = val
 
             pos = Pattern('absolute', val)
-            assert p == pos.get_position((1, 2), (0, 0)), "This is valid move"
+            assert p == pos.get_ref_position((1, 2), (0, 0)), "This is valid move"
 
             pos = Pattern('classic', val)
             px, py = p
@@ -292,7 +292,7 @@ def test_Position_class_4_Valid_Board_Gap():
                 py += vert
 
             p = px, py
-            ret = pos.get_position((1, 2), (0, 0), board=board)
+            ret = pos.get_ref_position((1, 2), (0, 0), board=board)
             assert p == ret, f"Field: {val}, Expected: {p}, got {ret}"
 
 
