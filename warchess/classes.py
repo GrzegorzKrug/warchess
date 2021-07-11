@@ -6,14 +6,129 @@ from warnings import warn
 from copy import copy, deepcopy
 
 from abstracts import FigureBase, \
-    SpecialVariant, SpecialBase, \
+    SpecialBase, \
     attack_tuple, move_tuple, BoardBase, GameModeBase, RequiredFig
 
 import numpy as np
 import time
 
 
+class FigureFactory:
+    figs = {}
+    symb_keys = {}
+
+    @classmethod
+    def add_fig(cls, cat, key, fig):
+        print(cat, key, fig)
+        cat = cat.lower()
+        key = key.lower()
+        sym = fig.symbol.lower()
+
+        if cat not in cls.figs:
+            cls.figs[cat] = {}
+            cls.symb_keys[cat] = {}
+
+        "Figure dict"
+        group = cls.figs[cat]
+        if key in group:
+            warn(f"Overwriting figure in factory: {cat}: {key}")
+        group[key] = fig
+
+        "Symbols dict"
+        group = cls.symb_keys[cat]
+        if sym in group:
+            warn(f"Overwriting symbol in factory: {cat}: {key}")
+        group[sym] = key
+
+    @classmethod
+    def decor_adder(cls, gamemode):
+        def wrapper(fig_clss):
+            key = fig_clss.name
+            print(f"key: {key}")
+            cls.add_fig(gamemode, key, fig_clss)
+            return fig_clss
+
+        return wrapper
+
+    @classmethod
+    def get_abstract_fig(cls, cat, key):
+        cat = cat.lower()
+        key = key.lower()
+        return cls.figs[cat][key]
+
+    @classmethod
+    def get_key_by_symb(cls, cat, symb):
+        return cls.symb_keys[cat].get(symb, None)
+
+    @classmethod
+    def find_fig_key_by_str(cls, cat=None, prefix=None):
+        if prefix is None or type(prefix) != str:
+            raise ValueError("Please put letter or prefix string")
+        prefix = prefix.lower()
+
+        if cat:
+            "Check only single category"
+            dict = cls.figs[cat]
+
+            "First chance"
+            key = cls.get_key_by_symb(cat, prefix)
+            if key in dict:
+                return cat, key
+
+            "Loop all items"
+            for k, v in dict.items():
+                if k.startswith(prefix):
+                    return cat, k
+
+
+            raise KeyError(f"Not found fig with prefix: '{prefix}'")
+
+        else:
+            "Iterate over categories"
+            for cat, dict in cls.figs.items():
+
+                "First chance"
+                key = cls.get_key_by_symb(cat, prefix)
+                if key in dict:
+                    return cat, key
+                "Iterate over subdict"
+                for k, v in dict.items():
+                    if k.starts_with(prefix):
+                        return cat, k
+
+            raise KeyError(f"Not found fig with prefix: {prefix}")
+
+    @classmethod
+    def get_fig(cls, cat, key, color, *a, **kw):
+        ab_fig = cls.get_abstract_fig(cat, key)
+        fig = ab_fig(color, *a, **kw)
+        return fig
+
+    # def get_proper_figure(self, name, color):
+    #     name = name.lower()
+    #     if name in ['pawn', 'p']:
+    #         fig = Pawn(color)
+    #     elif name in ['knight', 'n']:
+    #         fig = Knight(color)
+    #     elif name in ['bishop', 'b']:
+    #         fig = Bishop(color)
+    #     elif name in ['rook', 'r']:
+    #         fig = Rook(color)
+    #     elif name in ['queen', 'q']:
+    #         fig = Queen(color)
+    #     elif name in ['king', 'k']:
+    #         fig = King(color)
+    #     else:
+    #         fig = None
+    #
+    #     return fig
+
+
+@FigureFactory.decor_adder('classic')
 class Pawn(FigureBase):
+    name = "Pawn"
+    symbol = "P"
+
     def __init__(self, *a, did_rush=False, **kw):
         super().__init__(*a, **kw)
         self.did_rush = did_rush
@@ -27,24 +142,7 @@ class Pawn(FigureBase):
                 attack_tuple(1, 1),
         )
         self._specials = (PawnRush(), EnPassant(),)
-
-        if self.direction == 1:
-            self._move_patterns = self.flip_y_pattern(self._move_patterns)
-            self._attack_patterns = self.flip_y_pattern(self._attack_patterns)
-            for spec in self._specials:
-                spec.flip_this_by_y()
-
-
-    @property
-    def name(self):
-        # if self.color == 0:
-        #     return "Pawn"
-        # else:
-        return "Pawn"
-
-    @property
-    def symbol(self):
-        return "P"
+        self.adjust_orientation()
 
     def make_special_move(self):
         assert not self.was_moved, "Pawn can't be moved"
@@ -151,7 +249,11 @@ class EnPassant(SpecialBase):
         board.move_figure(f1, f2)
 
 
+@FigureFactory.decor_adder('classic')
 class Knight(FigureBase):
+    name = "Knight"
+    symbol = "N"
+
     def __init__(self, *a, air_move=True, air_attack=True, **kw):
         super().__init__(*a, air_move=air_move, air_attack=air_attack, **kw)
 
@@ -176,16 +278,12 @@ class Knight(FigureBase):
                 attack_tuple(-2, -1),
         )
 
-    @property
-    def name(self):
-        return "Knight"
 
-    @property
-    def symbol(self):
-        return "N"
-
-
+@FigureFactory.decor_adder('classic')
 class Bishop(FigureBase):
+    name = "Bishop"
+    symbol = "B"
+
     def __init__(self, *a, inf_move=True, inf_attack=True, **kw):
         super().__init__(*a, inf_move=inf_move, inf_attack=inf_attack, **kw)
 
@@ -202,16 +300,12 @@ class Bishop(FigureBase):
                 attack_tuple(-1, 1),
         )
 
-    @property
-    def name(self):
-        return "Bishop"
 
-    @property
-    def symbol(self):
-        return "B"
-
-
+@FigureFactory.decor_adder('classic')
 class Queen(FigureBase):
+    name = "Queen"
+    symbol = "Q"
+
     def __init__(self, *a, inf_move=True, inf_attack=True, **kw):
         super().__init__(*a, inf_move=inf_move, inf_attack=inf_attack, **kw)
         self._move_patterns = (
@@ -235,28 +329,16 @@ class Queen(FigureBase):
                 attack_tuple(0, -1),
         )
 
-    @property
-    def name(self):
-        return "Queen"
 
-    @property
-    def symbol(self):
-        return "Q"
-
-
+@FigureFactory.decor_adder('classic')
 class King(Queen):
+    name = "King"
+    symbol = "K"
+
     def __init__(self, *a, inf_move=False, inf_attack=False, **kw):
         super().__init__(*a, inf_move=inf_move, inf_attack=inf_attack, **kw)
 
         self._specials = (Castle(),)
-
-    @property
-    def name(self):
-        return "King"
-
-    @property
-    def symbol(self):
-        return "K"
 
 
 class Castle(SpecialBase):
@@ -351,20 +433,11 @@ class Castle(SpecialBase):
         return "Castle"
 
 
-# class CastleRookToKing(SpecialBase):
-#     def __init__(self):
-#         super().__init__()
-#         self.patterns = (self.named_tup(3, 0), self.named_tup(-2, 0))
-#
-#     def is_valid(self, context, move):
-#         pass
-#
-#     @property
-#     def name(self):
-#         return "CastleR"
-#
-
+@FigureFactory.decor_adder('classic')
 class Rook(FigureBase):
+    name = "Rook"
+    symbol = "R"
+
     def __init__(self, *a, inf_move=True, inf_attack=True, **kw):
         super(Rook, self).__init__(*a, inf_move=inf_move, inf_attack=inf_attack, **kw)
         self._move_patterns = (
@@ -379,14 +452,6 @@ class Rook(FigureBase):
                 attack_tuple(0, -1),
                 attack_tuple(-1, 0),
         )
-
-    @property
-    def name(self):
-        return "Rook"
-
-    @property
-    def symbol(self):
-        return "R"
 
 
 class Board(BoardBase):
@@ -439,10 +504,12 @@ class ClassicGame(GameModeBase):
                 order = ord(char)
 
                 if 65 <= order <= 90:
-                    fig = self.get_proper_figure(char, 0)
+                    cat, fig_key = FigureFactory.find_fig_key_by_str('classic', char)
+                    fig = FigureFactory.get_fig('classic', fig_key, 0)
                     self.board.add_figure((x, y), fig)
                 elif 97 <= order <= 122:
-                    fig = self.get_proper_figure(char, 1)
+                    cat, fig_key = FigureFactory.find_fig_key_by_str('classic', char)
+                    fig = FigureFactory.get_fig('classic', fig_key, 1, orientation=2)
                     self.board.add_figure((x, y), fig)
                 else:
                     skip = int(char)
@@ -450,6 +517,7 @@ class ClassicGame(GameModeBase):
                     if x > 7:
                         break
                     continue
+
                 if isinstance(fig, (King,)):
                     self.kings[fig.color][x, y] = fig
                 x += 1
@@ -505,25 +573,6 @@ class ClassicGame(GameModeBase):
                     self.checks[color] = True
                 else:
                     self.checks[color] = False
-
-    def get_proper_figure(self, name, color):
-        name = name.lower()
-        if name in ['pawn', 'p']:
-            fig = Pawn(color)
-        elif name in ['knight', 'n']:
-            fig = Knight(color)
-        elif name in ['bishop', 'b']:
-            fig = Bishop(color)
-        elif name in ['rook', 'r']:
-            fig = Rook(color)
-        elif name in ['queen', 'q']:
-            fig = Queen(color)
-        elif name in ['king', 'k']:
-            fig = King(color)
-        else:
-            fig = None
-
-        return fig
 
     def _is_promotion(self, field):
         fig = self.board.get(field)

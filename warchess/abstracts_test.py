@@ -11,11 +11,42 @@ def test_1_req_figure():
     )
 
 
-def test_2_ccp():
+def test_Required_Fif_1_():
     req_rush_r = RequiredFig(
             req_type="P", req_status={"rushed": True},
             pos=('relative_f1', (1, 0)), req_team=RequiredFig.keys['enemy']
     )
+
+
+def test_Required_Fig_1_():
+    board = BoardBase()
+
+    req_rush_r = RequiredFig(
+            req_type="P", req_status={"rushed": True},
+            pos=('relative_f1', (1, 0)), req_team=RequiredFig.keys['enemy']
+    )
+
+
+
+
+def test_Required_Fig_2_():
+    pass
+
+
+def test_Required_Fig_3_():
+    pass
+
+
+def test_Required_Fig_4_():
+    pass
+
+
+def test_Required_Fig_5_():
+    pass
+
+
+def test_Required_Fig_6_():
+    pass
 
 
 def test_3_flip_required_object():

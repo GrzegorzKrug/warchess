@@ -42,23 +42,25 @@ class InvalidBoardIndexes(InvalidMove):
 
 
 class FigureBase(ABC):
-    def __init__(self, color=0, team=None, face_direction=None, was_moved=False,
-                 air_move=False, air_attack=False, stationary_attack=False,
-                 inf_move=False, inf_attack=False):
-        color = int(color)
-        if face_direction is None:
-            direction = color
-        else:
-            direction = int(face_direction)
+    name = "BaseFigure"
 
-        assert 0 <= direction <= 3, "Figure can be only move in 4 directions"
+    def __init__(self, color=0, team=None, was_moved=False,
+                 air_move=False, air_attack=False, stationary_attack=False,
+                 inf_move=False, inf_attack=False,
+                 orientation=None):
+        color = int(color)
 
         self.color = color
         if team is None:
             self.team = color
         else:
             self.team = int(team)
-        self.direction = direction
+
+        if orientation:
+            self.orientation = orientation
+        else:
+            self.orientation = color
+
         self.was_moved = was_moved
 
         self.is_air_move = air_move
@@ -87,29 +89,49 @@ class FigureBase(ABC):
     def specials(self):
         return self._specials
 
-    @staticmethod
-    def rotate_pattern(ptrn, right=True):
-        named = get_same_tuple(ptrn[0])
-        if right:
-            rotated = (named(y, -x) for x, y in ptrn)
-        else:
-            rotated = (named(-y, x) for x, y in ptrn)
+    def adjust_orientation(self):
+        ptrn_move = self.move_patterns
+        ptrn_atck = self.attack_patterns
+        spc = self.specials
 
+        if self.orientation == 1:
+            self._move_patterns = self.rotate_pattern(ptrn_move)
+            self._attack_patterns = self.rotate_pattern(ptrn_atck)
+            # for spc in self.specials:
+            #     spc.rotate_pattern()
+
+        elif self.orientation == 2:
+            self._move_patterns = self.flip_y_pattern(ptrn_move)
+            self._attack_patterns = self.flip_y_pattern(ptrn_atck)
+
+        elif self.orientation == 3:
+            self._move_patterns = self.rotate_pattern(ptrn_move, False)
+            self._attack_patterns = self.rotate_pattern(ptrn_atck, False)
+
+    @staticmethod
+    def rotate_pattern(ptrns, clockwise=True):
+        named = get_same_tuple(ptrns[0])
+
+        if clockwise:
+            "Right"
+            rotated = tuple(named(y, -x) for x, y in ptrns)
+            # self.orientation = (self.orientation + 1) % 4
+        else:
+            rotated = tuple(named(-y, x) for x, y in ptrns)
+            # self.orientation = (self.orientation - 1) % 4
+
+        # self._move_patterns = rotated
         return rotated
 
     @staticmethod
-    def flip_x_pattern(ptrn):
-        named = get_same_tuple(ptrn[0])
-        return tuple(named(-x, y) for x, y in ptrn)
+    def flip_x_pattern(ptrns):
+        named = get_same_tuple(ptrns[0])
+        return tuple(named(-x, y) for x, y in ptrns)
 
     @staticmethod
-    def flip_y_pattern(ptrn):
-        named = get_same_tuple(ptrn[0])
-        return tuple(named(x, - y) for x, y in ptrn)
-
-    @abstractproperty
-    def name(self):
-        return "BaseFigure"
+    def flip_y_pattern(ptrns):
+        named = get_same_tuple(ptrns[0])
+        return tuple(named(x, -y) for x, y in ptrns)
 
     @abstractproperty
     def symbol(self):
@@ -118,7 +140,7 @@ class FigureBase(ABC):
     def __str__(self):
         return f"{self.name}: Fly:{str(self.is_air_move)[0]}, " \
                f"Inf:{str(self.is_move_infinite)[0]}, " \
-               f"C:{self.color};"
+               f"C:{self.color}, SPC: {len(self.specials)};"
 
     def __repr__(self):
         return str(self)
@@ -204,6 +226,8 @@ class Pattern:
         return ccp
 
     def _decor_pos_validator(func):
+        """Decorator that checks if pattern after change is valid"""
+
         def wrapper(self, board, *a, **kw):
             out = func(self, board, *a, **kw)
             x, y = out
@@ -642,7 +666,6 @@ class BoardBase(ABC):
                 else:
                     text = ''
 
-                # text = text.center(justify)
                 text = f"{text:<{justify}}"
 
                 print(f"{text}", end='')
@@ -794,23 +817,6 @@ class GameModeBase(ABC):
 
         """
         return True
-
-    @abstractmethod
-    def get_proper_figure(self, name, color):
-        """
-        Method for generating pices
-        Args:
-            name:
-            color:
-
-        Returns:
-
-        """
-        pass
-
-    @abstractmethod
-    def _is_promotion(self, field):
-        pass
 
     @abstractmethod
     def get_promotion_fig(self, color):

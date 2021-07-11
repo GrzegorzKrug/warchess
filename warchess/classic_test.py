@@ -1,6 +1,7 @@
 import pytest
 
 from classes import Rook, Pawn, Knight, Queen, King, Bishop, ClassicGame
+from classes import FigureFactory
 from abstracts import InvalidMove
 
 
@@ -27,6 +28,16 @@ def test_1_fig_attrs():
 
         if f.specials:
             assert type(f.specials) is tuple
+
+
+def test_2_board_and_figs():
+    g = ClassicGame()
+    assert Pawn.name == "Pawn"
+    assert Knight.name == "Knight"
+    assert Bishop.name == "Bishop"
+    assert Rook.name == "Rook"
+    assert Queen.name == "Queen"
+    assert King.name == "King"
 
 
 def test_2_simple_moves():
@@ -980,6 +991,7 @@ def test_21_invalid_game():
 def test_22_new_board():
     g = ClassicGame()
     g.new_game()
+    g.board.print_board()
     for row in [1, 6]:
         for x in range(8):
             c = 0 if row == 1 else 1
@@ -1079,5 +1091,71 @@ def test_27_enpasannt_and_check3():
         g.make_move_from_str("f5", "f6")
 
 
-def test_27_():
+def test_28_Figure_Factory_1():
+    key = 'Unit1'
+    FigureFactory.add_fig('test', key, Pawn)
+    fig1 = FigureFactory.get_fig('test', key, 0)
+    fig2 = FigureFactory.get_fig('test', 'UNIT1', 1)
+    fig3 = FigureFactory.get_abstract_fig('test', 'unit1')
+
+    with pytest.raises(KeyError):
+        fig4 = FigureFactory.get_fig('test', 'unit_3', 3)
+    with pytest.raises(KeyError):
+        fig4 = FigureFactory.get_abstract_fig('test', 'unit_3')
+
+    assert fig1 == fig3
+
+
+def test_28_Figure_Factory_2():
+    fig1 = FigureFactory.get_fig('classic', "Pawn", 0)
+    fig2 = FigureFactory.get_fig('classic', "Rook", 0)
+    pw_abs = FigureFactory.get_abstract_fig('classic', 'Pawn')
+
+    assert type(fig1) == pw_abs
+    assert not type(fig2) == pw_abs
+
+
+def test_28_Figure_Factory_3():
+    assert FigureFactory.get_abstract_fig("classic", "Pawn") == Pawn
+    assert FigureFactory.get_abstract_fig("classic", "Bishop") == Bishop
+    assert FigureFactory.get_abstract_fig("classic", "Knight") == Knight
+    assert FigureFactory.get_abstract_fig("classic", "Bishop") == Bishop
+    assert FigureFactory.get_abstract_fig("classic", "Queen") == Queen
+    assert FigureFactory.get_abstract_fig("classic", "King") == King
+
+
+def test_28_Figure_Factory_4():
+    assert FigureFactory.find_fig_key_by_str("classic", "P") == ("classic", "pawn")
+    assert FigureFactory.find_fig_key_by_str("classic", "B") == ("classic", "bishop")
+    assert FigureFactory.find_fig_key_by_str("classic", "N") == ("classic", "knight")
+    assert FigureFactory.find_fig_key_by_str("classic", "r") == ("classic", "rook")
+    assert FigureFactory.find_fig_key_by_str("classic", "Q") == ("classic", "queen")
+    assert FigureFactory.find_fig_key_by_str("classic", "K") == ("classic", "king")
+
+
+def test_28_Figure_Factory_5():
+    pw1 = FigureFactory.get_fig('classic', 'Pawn', 0)
+    pw2 = FigureFactory.get_fig('classic', 'Pawn', 1)
+    pw3 = FigureFactory.get_fig('classic', 'Pawn', 2)
+    pw4 = FigureFactory.get_fig('classic', 'Pawn', 3)
+
+    assert pw1.orientation == 0
+    assert (0, 1) in pw1._move_patterns
+
+    assert pw2.orientation == 1
+    assert (1, 0) in pw2._move_patterns
+
+    assert pw3.orientation == 2
+    assert (0, -1) in pw3._move_patterns
+
+    assert pw4.orientation == 3
+    assert (-1, 0) in pw4._move_patterns
+
+
+def test_28_Figure_Factory_4_flip_specials():
+    raise NotImplementedError
+    pass
+
+
+def test_28_Figure_Factory_5():
     pass
