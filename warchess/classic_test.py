@@ -1162,7 +1162,7 @@ def test_28_Figure_Factory_4_flip_specials():
 
 def test_29_Pattern_Check_Initialization():
     # g = ClassicGame()
-    board = BoardBase()
+    board = BoardBase(left=3, bottom=4)
 
     f1 = (1, 1)
     f2 = (2, 2)
@@ -1177,6 +1177,18 @@ def test_29_Pattern_Check_Initialization():
     assert not pos.match_pattern(f1, f2_wrong, board)
 
     pos = Pattern('absolute', "c")
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f2_wrong, board)
+
+    pos = Pattern('absolute', (2, None))
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f2_wrong, board)
+
+    pos = Pattern('absolute', (None, 2))
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f2_wrong, board)
+
+    pos = Pattern('absolute', (None, None))
     assert pos.match_pattern(f1, f2, board)
     assert not pos.match_pattern(f1, f2_wrong, board)
 
@@ -1199,6 +1211,21 @@ def test_29_Pattern_Check_Initialization_classic():
     assert pos.match_pattern(f1, f2, board)
     assert not pos.match_pattern(f1, f2_wrong, board)
 
+    pos = Pattern('classic', (2, None))
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f2_wrong, board)
+
+    pos = Pattern('classic', (None, 2))
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f2_wrong, board)
+
+    pos = Pattern('classic', (None, None))
+    assert pos.match_pattern(f1, f2, board)
+    assert pos.match_pattern(f1, f2_wrong, board)
+    assert pos.match_pattern(f1, f1, board)
+    assert pos.match_pattern(f2, f2, board)
+    assert pos.match_pattern(f2, f1, board)
+
 
 def test_29_Pattern_Check_incorrect_init_with_any_col_row():
     board = BoardBase(left=3, bottom=3)
@@ -1218,10 +1245,34 @@ def test_29_Pattern_Check_incorrect_init_with_any_col_row():
     assert pos.match_pattern(f1, f2, board)
     assert not pos.match_pattern(f1, f2_wrong, board)
 
+    pos = Pattern('relative', (None, None))
+    assert pos.match_pattern(f1, f2, board)
+    assert pos.match_pattern(f1, f2_wrong, board)
+
     with pytest.raises(ValueError):
         pos = Pattern('relative', "A")
     with pytest.raises(ValueError):
         pos = Pattern('relative', "6")
+
+
+def test_29_Pattern_Check_zeros():
+    board = BoardBase(left=3, bottom=3)
+    f1 = (1, 1)
+    f2 = (0, 0)
+    f2_classic = (3, 3)
+    f_wrong = (5, 5)
+
+    pos = Pattern('relative', (0, 0))
+    assert pos.match_pattern(f1, f1, board)
+    assert not pos.match_pattern(f1, f_wrong, board)
+
+    pos = Pattern('absolute', (0, 0))
+    assert pos.match_pattern(f1, f2, board)
+    assert not pos.match_pattern(f1, f_wrong, board)
+
+    pos = Pattern('classic', (0, 0))
+    assert pos.match_pattern(f1, f2_classic, board)
+    assert not pos.match_pattern(f1, f_wrong, board)
 
 
 def test_29_Pattern_1_Check_Comparison():

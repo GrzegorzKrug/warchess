@@ -345,8 +345,8 @@ class Pattern:
                 pos_y += board.bottom
 
             pos = pos_x, pos_y
-
             return pos
+
         elif self.key == 'absolute':
             return self.pos
         else:
@@ -357,18 +357,18 @@ class Pattern:
             dx = f2[0] - f1[0]
             dy = f2[1] - f1[1]
             px, py = self.pos
-            if px and px != dx:
+            if px is not None and px != dx:
                 return False
-            if py and py != dy:
+            if py is not None and py != dy:
                 return False
 
             return True
-            # return self.pos == diff
+
         else:
             px, py = self.get_ref_position(f1, f2, board)
-            if px and px != f2[0]:
+            if px is not None and px != f2[0]:
                 return False
-            if py and py != f2[1]:
+            if py is not None and py != f2[1]:
                 return False
             return True
 
@@ -412,7 +412,7 @@ class RequiredFig:
         self.position = Pattern(k, p)
 
     def check_pos(self, parent, posf1, posf2, board):
-        pos = self.position.get_position(posf1, posf2, board)
+        pos = self.position.get_ref_position(posf1, posf2, board)
         fig = board.get(pos)
         return self.check_requirements(parent, fig)
 
