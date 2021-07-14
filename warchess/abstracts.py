@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod, abstractproperty, ABCMeta
 from collections import namedtuple
 from copy import deepcopy
 
@@ -72,7 +72,7 @@ class FigureBase(ABC):
 
         self._move_patterns = None
         self._attack_patterns = None
-        self._specials = None
+        self._specials = []
 
     def move(self):
         self.was_moved = True
@@ -387,20 +387,21 @@ class RequiredFig:
             "same": -2,
             "enemy": -3,
             "other": -3,
-            # "None": -4,
-            # "none": -4,
+            "None": -4,
+            "none": -4,
+            "empty": -4,
     }
     inv_keys = {v: k for k, v in keys.items()}
 
     def __init__(self,
                  req_team=0, req_color=0, req_type=0,
+                 pos: tuple["Key", tuple["pos_x, pos_y"]] = None,
                  req_status=None,
-                 pos: tuple = None,
                  ):
 
-        self.req_type = req_type
-        self.req_color = req_color
-        self.req_team = req_team
+        self.req_type = self._convert_to_num_if_str(req_type)
+        self.req_color = self._convert_to_num_if_str(req_color)
+        self.req_team = self._convert_to_num_if_str(req_team)
 
         if req_status:
             assert isinstance(req_status, (dict,)), f"Status must be dict, but got {type(req_status)}"
@@ -408,15 +409,31 @@ class RequiredFig:
         else:
             self.req_status = {}
 
+        if type(self.req_type) is str:
+            raise ValueError
+        elif type(self.req_type) in (ABCMeta, int):
+            "Ok"
+        else:
+            raise ValueError(f"Invalid type, do not instantiate class: {self.req_type} ({type(self.req_type)})")
+
+        if pos is None:
+            raise ValueError("Please provide pos data: `key, (x, y)`")
+
         k, p = pos
         self.position = Pattern(k, p)
 
-    def check_pos(self, parent, posf1, posf2, board):
+    @classmethod
+    def _convert_to_num_if_str(cls, val):
+        if type(val) is str and val in cls.keys:
+            return cls.keys.get(val)
+        return val
+
+    def check_reqs(self, parent, posf1, posf2, board):
         pos = self.position.get_ref_position(posf1, posf2, board)
         fig = board.get(pos)
-        return self.check_requirements(parent, fig)
+        return self._check_requirements(parent, fig)
 
-    def check_requirements(self, parent: FigureBase, fig: FigureBase):
+    def _check_requirements(self, parent: FigureBase, fig: FigureBase):
         """"""
         "Required empty"
         if self.req_type is None and fig is None:

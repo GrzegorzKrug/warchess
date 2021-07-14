@@ -1,8 +1,8 @@
 import pytest
 
 from classes import Rook, Pawn, Knight, Queen, King, Bishop, ClassicGame
-from classes import FigureFactory
-from abstracts import InvalidMove, Pattern, BoardBase
+from classes import FigureFactory, RequiredFig
+from abstracts import InvalidMove, Pattern, BoardBase, FigureBase
 
 
 def test_1_():
@@ -1310,3 +1310,107 @@ def test_29_Pattern_2_Check_valid():
     assert pos.match_pattern(f1, f2, board)
     for wrg in wrong_s:
         assert not pos.match_pattern(f1, wrg, board), f"Not valid move: {f1} -> {wrg}"
+
+
+def test_29_Pattern_Check_flip_gaps():
+    raise NotImplementedError()
+
+
+def test_30_Required_Fix_Check_1():
+    req = RequiredFig('any', 'same', 'same', ('classic', 'A2'))
+    g = ClassicGame()
+    board = g.board
+    board.print_board()
+
+    f1 = board.string_to_index("A2")
+    f2 = board.string_to_index("B2")
+    f3 = board.string_to_index("A3")
+
+    pawn = board.get(f1)
+
+    assert req.check_reqs(pawn, f1, f1, board), "Same Pawn"
+    assert req.check_reqs(pawn, f1, f2, board), "Other Pawn"
+    assert req.check_reqs(pawn, f1, f3, board), "No fig, but Pos is A2"
+
+    req = RequiredFig('any', 'same', 'same', ('classic', 'A3'))
+
+    assert not req.check_reqs(pawn, f1, f1, board), "Invalid"
+    assert not req.check_reqs(pawn, f1, f2, board), "Invalid"
+    assert not req.check_reqs(pawn, f1, f3, board), "Invalid"
+
+
+def test_30_Required_Fix_Check_2():
+    g = ClassicGame()
+    board = g.board
+    board.print_board()
+
+    with pytest.raises(ValueError):
+        req = RequiredFig('any', 'same', 'pawn', ('classic', 'A2'))
+
+    f1 = board.string_to_index("A2")
+    f2 = board.string_to_index("B2")
+    f3 = board.string_to_index("A3")
+
+    pawn = board.get(f1)
+
+    req = RequiredFig('any', 'same', 'same', ('classic', 'A3'))
+
+    assert not req.check_reqs(pawn, f1, f1, board), "Invalid"
+    assert not req.check_reqs(pawn, f1, f2, board), "Invalid"
+    assert not req.check_reqs(pawn, f1, f3, board), "Invalid"
+    req = RequiredFig('any', 'same', FigureFactory.get_abstract_fig("classic", "Pawn"), ('classic', 'A2'))
+
+    f1 = board.string_to_index("A2")
+    f2 = board.string_to_index("B2")
+    f3 = board.string_to_index("A3")
+
+    pawn = board.get(f1)
+
+    assert req.check_reqs(pawn, f1, f1, board), "Same Pawn"
+    assert req.check_reqs(pawn, f1, f2, board), "Other Pawn"
+    assert req.check_reqs(pawn, f1, f3, board), "No fig, but Pos is A2"
+
+    req = RequiredFig('any', 'same', 'same', ('classic', 'A3'))
+
+    assert not req.check_reqs(pawn, f1, f1, board), "Invalid"
+    assert not req.check_reqs(pawn, f1, f2, board), "Invalid"
+    assert not req.check_reqs(pawn, f1, f3, board), "Invalid"
+
+
+def test_30_Required_Fix_Check_3():
+    king = FigureFactory.get_abstract_fig('classic', 'king')
+    queen = FigureFactory.get_abstract_fig('classic', 'queen')
+    pawn = FigureFactory.get_abstract_fig('classic', 'pawn')
+    pos = 'classic', 'A3'
+    RequiredFig('any', 'any', king, pos=pos)
+    RequiredFig('any', 'any', queen, pos=pos)
+    RequiredFig('any', 'any', pawn, pos=pos)
+
+    with pytest.raises(ValueError):
+        RequiredFig('any', 'any', king(), pos=pos)
+
+    with pytest.raises(ValueError):
+        RequiredFig('any', 'any', queen(), pos=pos)
+
+    with pytest.raises(ValueError):
+        RequiredFig('any', 'any', pawn(), pos=pos)
+
+
+def test_30_Required_Fix_Check_4():
+    pass
+
+
+def test_30_Required_Fix_Check_5():
+    pass
+
+
+def test_30_Required_Fix_Check_6():
+    pass
+
+
+def test_30_Required_Fix_Check_7():
+    pass
+
+
+def test_30_Required_Fix_Check_8():
+    pass
