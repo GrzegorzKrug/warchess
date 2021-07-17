@@ -1190,7 +1190,20 @@ def test_29_Pattern_Check_Initialization():
 
     pos = Pattern('absolute', (None, None))
     assert pos.match_pattern(f1, f2, board)
-    assert not pos.match_pattern(f1, f2_wrong, board)
+    assert pos.match_pattern(f1, f2_wrong, board)
+
+    pos = Pattern('any', (None, None))
+    assert pos.match_pattern(f1, f2, board)
+    assert pos.match_pattern(f1, f2_wrong, board)
+
+def test_29_Pattern_Can_Not_Be_Empty():
+    with pytest.raises(ValueError):
+        Pattern("any", None)
+
+    with pytest.raises(ValueError):
+        Pattern("any", "")
+
+    Pattern("any", (1, 1))
 
 
 def test_29_Pattern_Check_Initialization_classic():

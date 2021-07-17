@@ -162,7 +162,7 @@ Problem that I must solve:
 class Pattern:
     pos_keys = [
             'relative', 'relative_f1', 'relative_f2',
-            'absolute', 'classic', 'any'
+            'absolute', 'classic', 'any',
     ]
     relatives = ['relative', 'relative_f1', 'relative_f2']
 
@@ -178,6 +178,9 @@ class Pattern:
         """
 
         key = key.lower()
+        if key not in self.pos_keys:
+            raise ValueError(f"Key is not allowed: {key}")
+
         self.key = key
         if isinstance(pos, str):
             if key in self.relatives:
@@ -214,6 +217,12 @@ class Pattern:
 
             else:
                 raise ValueError("Field should have 2 Symbols")
+        elif type(pos) is tuple:
+            pass
+        elif type(pos) is list:
+            pos = tuple(pos)
+        else:
+            raise ValueError("`pos` must be tuple or board field string")
 
         self.pos = pos
         self._ccp = None
@@ -349,6 +358,8 @@ class Pattern:
 
         elif self.key == 'absolute':
             return self.pos
+        elif self.key == 'any':
+            raise ValueError("Pattern is for any field.")
         else:
             raise NotImplementedError(f"Mode does not match: {self.key}")
 
