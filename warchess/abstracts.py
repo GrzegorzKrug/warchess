@@ -33,6 +33,11 @@ class InvalidMove(Exception):
     #     pass
 
 
+class BoardError(Exception):
+    """Main Exceptions for all wrong moves"""
+    pass
+
+
 class IncorrectTurn(InvalidMove):
     pass
 
@@ -283,26 +288,82 @@ class Pattern:
 
         return wrapper
 
+    @staticmethod
+    def _rotation(key, dim, gap, val, clockwise):
+        pass
+
     @_decor_pos_validator
     def rotate_this(self, board, clockwise=True):
-        pos = self.pos
+        x, y = self.pos
+        point_is_in_v_gap = False
+        point_is_in_h_gap = False
+
         if self.key in ['relative', 'relative_f1', 'relative_f2']:
             "Relative moves do not need board. Center always in 0,0"
             h, w = 0, 0
+            abs_x, abs_y = x, y
         else:
-            h, w = board.height, board.width
-            h -= 1
-            w -= 1
+            "Rotating only classic mode."
+            width = board.width + board.gap_horizontal
+            height = board.height + board.gap_vertical
+            gap_h_end = board.width / 2 + board.gap_horizontal - 1
+            gap_v_end = board.height / 2 + board.gap_vertical - 1
 
-        x, y = pos
+            if x and 3 < x <= gap_h_end:
+                point_is_in_h_gap = True
+            else:
+                point_is_in_h_gap = False
+
+            if y and 3 < y <= gap_v_end:
+                point_is_in_v_gap = True
+            else:
+                point_is_in_v_gap = False
+
+            print()
+            print(f"pos: {self.pos}")
+            print(f"in vgap: {point_is_in_v_gap}, in hgap: {point_is_in_h_gap}")
+
+            if (point_is_in_h_gap or point_is_in_v_gap) and (board.gap_horizontal != board.gap_vertical):
+                raise BoardError("Gap sizes must be equal for rotation if point is in gap zone")
+            elif point_is_in_h_gap or point_is_in_v_gap:
+
+                h = height - 1
+                w = width - 1
+                new_pos = self._rotate(x, y, h, w, clockwise)
+                return new_pos
+
+            else:
+                if x and x > 3:  # and not point_is_in_h_gap:
+                    abs_x = x - board.gap_horizontal
+                else:
+                    abs_x = x
+                if y and y > 3:  # and not point_is_in_v_gap:
+                    abs_y = y - board.gap_vertical
+                else:
+                    abs_y = y
+
+                h, w = board.height - 1, board.width - 1
+
+        new_pos = self._rotate(abs_x, abs_y, h, w, clockwise)
+
+        if self.key in ['classic', 'absolute']:
+            x, y = new_pos
+            if x and x > 3 and not point_is_in_v_gap:
+                x += board.gap_horizontal
+            if y and y > 3 and not point_is_in_h_gap:
+                y += board.gap_vertical
+            new_pos = x, y
+
+        return new_pos
+
+    def _rotate(self, abs_x, abs_y, h, w, clockwise):
         if clockwise:
             "Right"
-            new_pos = (y, x if x is None else h - x)
+            new_pos = (abs_y, abs_x if abs_x is None else h - abs_x)
             self.orientation = (self.orientation + 1) % 4
         else:
-            new_pos = (y if y is None else w - y, x)
+            new_pos = (abs_y if abs_y is None else w - abs_y, abs_x)
             self.orientation = (self.orientation - 1) % 4
-
         return new_pos
 
     @staticmethod

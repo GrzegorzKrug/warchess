@@ -1,6 +1,7 @@
 import pytest
 
 from abstracts import BoardBase
+from abstracts import BoardError
 from abstracts import RequiredFig, Pattern
 
 
@@ -330,37 +331,142 @@ def test_Position_class_5_Flip_ClassicAbsolute_Gap():
     pos.flip_this_by_x(board)
     assert pos.pos == (4, 5), "Flip odd gap"
 
-    pos = Pattern("absolute", (0, 4))
+    pos = Pattern("absolute", (0, 0))
     pos.flip_this_by_x(board)
-    assert pos.pos == (7 + horiz, 4), "Flip even gap"
+    assert pos.pos == (7 + horiz, 0), "Flip even gap"
+    pos.flip_this_by_y(board)
+    assert pos.pos == (7 + horiz, 7 + vert), "Flip even gap"
+
+
+# def test_Position_class_5_Rotate_Absolute_Gap():
+#     """Clockwise"""
+#     key = "classic"
+#     horiz = 3
+#     vert = 2
+#     board = BoardBase(gap_vertical=vert, gap_horizontal=horiz)
+#
+#     pos = Pattern(key, (1, 0))
+#     pos.rotate_this(board)
+#     assert pos.pos == (0, 6)
+#     pos.rotate_this(board)
+#     assert pos.pos == (6, 7)
+#     pos.rotate_this(board)
+#     assert pos.pos == (7, 1)
+#     pos.rotate_this(board)
+#     assert pos.pos == (1, 0)
+#
+#     "Counter Clockwise"
+#     pos = Pattern(key, (2, 1))
+#     pos.rotate_this(board, clockwise=False)
+#     assert pos.pos == (6, 2)
+#     pos.rotate_this(board, clockwise=False)
+#     assert pos.pos == (5, 6)
+#     pos.rotate_this(board, clockwise=False)
+#     assert pos.pos == (1, 5)
+#     pos.rotate_this(board, clockwise=False)
+#     assert pos.pos == (2, 1)
+#     raise NotImplementedError()
 
 
 def test_Position_class_5_Rotate_Classic_Gap():
     """Clockwise"""
     key = "classic"
-    vert = 2
     horiz = 3
+    vert = 2
     board = BoardBase(gap_vertical=vert, gap_horizontal=horiz)
-    pos = Pattern(key, (1, 0))
+
+    pos = Pattern(key, (4, 5))
+    with pytest.raises(BoardError):
+        pos.rotate_this(board)
+
+    pos = Pattern(key, (0, 0))
     pos.rotate_this(board)
-    assert pos.pos == (0, 6)
+    assert pos.pos == (0, 9)
     pos.rotate_this(board)
-    assert pos.pos == (6, 7)
+    assert pos.pos == (10, 9)
     pos.rotate_this(board)
-    assert pos.pos == (7, 1)
+    assert pos.pos == (10, 0)
     pos.rotate_this(board)
-    assert pos.pos == (1, 0)
+    assert pos.pos == (0, 0)
+
+    "Equal Gaps"
+    horiz = 4
+    vert = 4
+    board = BoardBase(gap_vertical=vert, gap_horizontal=horiz)
+
+    pos = Pattern(key, (0, 0))
+    pos.rotate_this(board)
+    assert pos.pos == (0, 11)
+    pos.rotate_this(board)
+    assert pos.pos == (11, 11)
+    pos.rotate_this(board)
+    assert pos.pos == (11, 0)
+    pos.rotate_this(board)
+    assert pos.pos == (0, 0)
 
     "Counter Clockwise"
-    pos = Pattern(key, (2, 1))
     pos.rotate_this(board, clockwise=False)
-    assert pos.pos == (6, 2)
+    assert pos.pos == (11, 0)
     pos.rotate_this(board, clockwise=False)
-    assert pos.pos == (5, 6)
+    assert pos.pos == (11, 11)
     pos.rotate_this(board, clockwise=False)
-    assert pos.pos == (1, 5)
+    assert pos.pos == (0, 11)
     pos.rotate_this(board, clockwise=False)
-    assert pos.pos == (2, 1)
+    assert pos.pos == (0, 0)
+
+
+def test_Position_class_5_Rotate_Classic_InGapZone():
+    key = 'classic'
+    horiz = 4
+    vert = 4
+    board = BoardBase(gap_vertical=vert, gap_horizontal=horiz)
+    "Point in Gap Zone"
+    pos = Pattern(key, (4, 2))
+    pos.rotate_this(board)
+    assert pos.pos == (2, 7)
+    pos.rotate_this(board)
+    assert pos.pos == (7, 9)
+    pos.rotate_this(board)
+    assert pos.pos == (9, 4)
+    pos.rotate_this(board)
+    assert pos.pos == (4, 2)
+
+    "Counter"
+    pos.rotate_this(board, clockwise=False)
+    assert pos.pos == (9, 4)
+    pos.rotate_this(board, clockwise=False)
+    assert pos.pos == (7, 9)
+    pos.rotate_this(board, clockwise=False)
+    assert pos.pos == (2, 7)
+    pos.rotate_this(board, clockwise=False)
+    assert pos.pos == (4, 2)
+
+
+def test_Position_class_5_Rotate_Classic_InGapCenter():
+    key = 'classic'
+    horiz = 3
+    vert = 3
+    board = BoardBase(gap_vertical=vert, gap_horizontal=horiz)
+    "Point in Gap Zone"
+    pos = Pattern(key, (5, 3))
+    pos.rotate_this(board)
+    assert pos.pos == (3, 5)
+    pos.rotate_this(board)
+    assert pos.pos == (5, 7)
+    pos.rotate_this(board)
+    assert pos.pos == (7, 5)
+    pos.rotate_this(board)
+    assert pos.pos == (5, 3)
+
+    "Counter"
+    pos.rotate_this(board, clockwise=False)
+    assert pos.pos == (7, 5)
+    pos.rotate_this(board, clockwise=False)
+    assert pos.pos == (5, 7)
+    pos.rotate_this(board, clockwise=False)
+    assert pos.pos == (3, 5)
+    pos.rotate_this(board, clockwise=False)
+    assert pos.pos == (5, 3)
 
 
 def test_1_req_figure():
