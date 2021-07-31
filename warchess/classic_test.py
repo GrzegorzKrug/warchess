@@ -1196,6 +1196,7 @@ def test_29_Pattern_Check_Initialization():
     assert pos.match_pattern(f1, f2, board)
     assert pos.match_pattern(f1, f2_wrong, board)
 
+
 def test_29_Pattern_Can_Not_Be_Empty():
     with pytest.raises(ValueError):
         Pattern("any", None)

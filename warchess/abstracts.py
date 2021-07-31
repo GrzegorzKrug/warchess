@@ -160,6 +160,9 @@ Problem that I must solve:
 
 
 class Pattern:
+    """
+    Class for calculation absolute and relative position according to board.
+    """
     pos_keys = [
             'relative', 'relative_f1', 'relative_f2',
             'absolute', 'classic', 'any',
@@ -260,14 +263,20 @@ class Pattern:
     def _decor_pos_validator(func):
         """Decorator that checks if pattern after change is valid"""
 
-        def wrapper(self, board, *a, **kw):
+        def wrapper(self, board=None, *a, **kw):
+            if self.key in ['classic', 'absolute'] and board is None:
+                raise ValueError("Board is required for classic and absolute pattern type")
+
             out = func(self, board, *a, **kw)
             x, y = out
-            if x is not None:
-                assert 0 <= x < board.width, f"Width is higher then board or negative!: {x}"
+            if self.key in ['classic', 'absolute']:
+                board_dim_x = board.width + board.gap_horizontal
+                board_dim_y = board.height + board.gap_vertical
+                if x is not None:
+                    assert 0 <= x < board_dim_x, f"Width is higher then board or negative!: {x}"
 
-            if y is not None:
-                assert 0 <= y < board.height, f"Height is higher then board or negative!: {y}"
+                if y is not None:
+                    assert 0 <= y < board_dim_y, f"Height is higher then board or negative!: {y}"
 
             self.pos = out
             return out
@@ -296,34 +305,46 @@ class Pattern:
 
         return new_pos
 
+    @staticmethod
+    def _flip(key, dim, gap, val, expand=0):
+        """Flipping method"""
+        if val is None:
+            new_val = None
+        elif key in ['relative', 'relative_f1', 'relative_f2']:
+            "Relative moves do not need board. Center always in 0, 0"
+            w = 0
+            new_val = dim - val
+        elif gap > 0:
+            gap_is_odd = bool(gap % 2)
+            board_dimension = dim + gap
+            half_indx = board_dimension // 2
+            if gap_is_odd and val == half_indx:
+                new_val = val
+            elif gap_is_odd:
+                new_val = (board_dimension - int(gap_is_odd)) - val
+            else:
+                new_val = (board_dimension - int(gap_is_odd) - 1) - val
+
+        else:
+            w = dim - 1
+            new_val = w - val
+        return new_val
+
     @_decor_pos_validator
     def flip_this_by_x(self, board):
         x, y = self.pos
 
-        if self.key in ['relative', 'relative_f1', 'relative_f2']:
-            "Relative moves do not need board. Center always in 0,0"
-            w = 0
-        else:
-            w = board.width - 1
-
-        new_x = None if x is None else w - x
-        new_y = y
-        new_pos = new_x, new_y
+        new_x = self._flip(self.key, board.width, board.gap_horizontal, x)
+        new_pos = new_x, y
         self.orientation = (self.orientation + 2) % 4
         return new_pos
 
     @_decor_pos_validator
     def flip_this_by_y(self, board):
         x, y = self.pos
-        if self.key in ['relative', 'relative_f1', 'relative_f2']:
-            "Relative moves do not need board. Center always in 0,0"
-            h = 0
-        else:
-            h = board.height - 1
 
-        new_x = x
-        new_y = None if y is None else h - y
-        new_pos = new_x, new_y
+        new_y = self._flip(self.key, board.height, board.gap_vertical, y)
+        new_pos = x, new_y
         self.orientation = (self.orientation + 2) % 4
         return new_pos
 
