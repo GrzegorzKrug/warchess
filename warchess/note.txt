@@ -1,0 +1,46 @@
+Rozwiązać problem:
+
+Wzorce
+  Silnika pobiera:
+    Szachownica: rozmiary
+      Pola, kolory, nazwy, poprawne pola(ale nie przejścia)
+    Figury:
+      Nazwa / Oznaczenie
+      Zakres ruchów.
+      Zakres ataków.
+      Unikalne ruchy (Awans / inne)
+    Zasady gry.
+      Modyfikatory zasad.
+      Gracze / Drużyny / Kierunki / Dystans Awansu
+
+    Stan gry.
+      FEN translator
+      Historia ruchów.
+      Historia Usuniec pojawień.
+      Analiza wczytanej gry. !!! ( JAK ? )
+
+    Timer:
+      Na podstawie ilosci graczy i zasad czasu.
+    Tura:
+      Kolejny gracz.
+      Usuń gracza.
+
+    Spawner figur.
+      Pojawianie figur.
+      Dobór koloru.
+      Dobór parametrów.
+
+    Obsługa unikalnych.
+    Lista dostepnych ruchów.
+      Dla wybranej figury.
+
+
+Wzorzec Stan gry:
+  Fen - aktualny stan
+  Fen - gra od początku
+  Fen2-
+    Zasady
+    Szachownica
+    Modyfikatory
+    Gra
+  Aplikacja stanu na parametry
